@@ -1,0 +1,75 @@
+Job Title: Analytics Engineer
+
+Company Overview:
+We are a data-driven technology company that helps organizations turn raw data into actionable insights. Our teams partner with stakeholders across the business to enable smarter decisions, optimize operations, and unlock new growth opportunities through analytics and experimentation.
+
+Position Summary:
+We are seeking a highly skilled Analytics Engineer to sit at the intersection of data engineering and analytics. In this role, you will partner with data, product, and business teams to design, build, and maintain reliable data models, semantic layers, and self-serve analytics tooling. You will be responsible for transforming raw data into well-modeled, trusted datasets that power dashboards, experiments, and advanced analytics across the organization.
+
+Key Responsibilities:
+- Design, build, and maintain robust, scalable data models and transformation pipelines (e.g., using dbt or similar tools)
+- Develop and enforce data modeling, naming, and documentation standards for analytics datasets
+- Partner with data engineering to define and improve data ingestion, warehousing, and orchestration workflows
+- Collaborate with analysts and business stakeholders to understand requirements and translate them into intuitive data structures and metrics
+- Build and maintain semantic layers and data marts that power BI tools and self-serve analytics
+- Implement data quality checks, monitoring, and alerting to ensure trusted, reliable data
+- Optimize SQL and transformation logic for performance and cost in cloud data warehouses
+- Contribute to the design and governance of core business metrics and KPIs
+- Create clear technical documentation and data catalogs to improve discoverability and usability of data assets
+- Advocate for and enable a modern analytics engineering stack and best practices across the organization
+
+Required Qualifications:
+- Bachelor's degree in Computer Science, Data Science, Engineering, Mathematics, or related field (or equivalent practical experience)
+- Strong proficiency in SQL and experience working with modern cloud data warehouses (e.g., Snowflake, BigQuery, Redshift)
+- Hands-on experience with data transformation and modeling tools (e.g., dbt or similar frameworks)
+- Solid understanding of data modeling principles (star/snowflake schemas, slowly changing dimensions, dimensional modeling)
+- Experience building and maintaining production-grade data pipelines and datasets that support BI and analytics
+- Familiarity with at least one programming language for data (e.g., Python) and version control (e.g., Git)
+- Strong communication and collaboration skills with both technical and non-technical stakeholders
+
+Preferred Qualifications:
+- 2–5 years of experience in analytics engineering, data engineering, or a closely related role
+- Experience working with modern BI / visualization tools (e.g., Looker, Power BI, Tableau, Mode)
+- Experience implementing and managing dbt projects (models, tests, documentation, CI/CD)
+- Familiarity with orchestration tools (e.g., Airflow, Dagster, Prefect) and data pipeline monitoring
+- Knowledge of software engineering best practices (code review, testing, CI/CD, modular design)
+- Experience defining and governing business metrics across multiple teams
+- Background in supporting stakeholders in product, marketing, growth, or finance
+
+What You'll Gain:
+- Opportunity to design and shape the core analytics foundations that power decision-making across the company
+- Exposure to a modern data stack and best practices in analytics engineering
+- Experience collaborating with cross-functional teams to solve complex, high-impact data problems
+- Deeper understanding of data architecture, governance, and reliability in production environments
+- Growth in technical leadership, system design, and influencing data practices across teams
+
+Technical Stack:
+- Languages: SQL, Python
+- Data Transformation & Modeling: dbt or similar transformation frameworks
+- Data Warehouse: Snowflake, BigQuery, Redshift, or similar
+- Orchestration & Workflow: Airflow, Dagster, Prefect, or similar
+- BI / Visualization: Looker, Power BI, Tableau, or similar
+- Collaboration & Version Control: Git, Jira, Confluence, or similar
+
+What We Offer:
+- Competitive compensation package and benefits
+- Mentorship and learning opportunities from experienced data and business leaders
+- Professional development resources, training, and conference opportunities
+- Flexible work arrangements (remote/hybrid options available)
+- Collaborative, inclusive, and growth-oriented culture
+- Opportunity to work on high-impact projects that are visible across the organization
+
+Role Details:
+- Employment Type: Full-time
+- Location: Remote, Hybrid, or On-site (location-dependent)
+- Team: Data & Analytics
+
+Application Process:
+Please submit your resume and a short cover letter. We strongly encourage you to include:
+- Links to dbt projects, analytics repositories, or code samples demonstrating your data modeling work
+- Any relevant certifications or projects involving modern data warehousing and analytics tooling
+- A brief description of a data model or pipeline you designed, why you designed it that way, and the impact it had
+
+We are looking for candidates who demonstrate curiosity, humility, ownership, and a genuine passion for using data to drive better outcomes for our customers and our business.
+
+

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    div {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    body {
+      font-family: "Times New Roman", serif;
+      font-size: 10pt;
+      margin: 0.2in;
+      line-height: 1.0;
+    }
+
+    .name {
+      font-size: 18pt;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .contact {
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 20px; /* ~2 blank lines after contact info */
+      font-size: 10pt;
+    }
+
+    h2 {
+      font-size: 10pt;
+      font-weight: bold;
+      margin-top: 0;
+      margin-bottom: 0;
+      text-transform: uppercase;
+      border-bottom: 1px solid #000;
+      padding-bottom: 1px;
+    }
+
+    .section {
+      margin-top: 0;
+      page-break-inside: avoid;
+    }
+
+    .entry-header {
+      width: 100%;
+      font-size: 10pt;
+      margin-top: 0;
+      margin-bottom: 0;
+      position: relative;
+      padding-right: 0;
+    }
+
+    .entry-header .entry-left {
+      display: inline-block;
+      white-space: nowrap;
+      max-width: calc(100% - 200px);
+      padding-right: 20px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .entry-header .entry-right {
+      position: absolute;
+      right: 0;
+      top: 0;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .entry-header .company-name {
+      font-weight: bold;
+    }
+
+    .entry-header .role-location {
+      font-style: italic;
+      font-weight: normal;
+    }
+
+    .entry-subheader {
+      font-size: 10pt;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    ul {
+      margin-top: 0;
+      margin-bottom: 0;
+      padding-left: 14px;
+      list-style-type: disc;
+    }
+
+    ul.last-bullet-block {
+      margin-bottom: 10px; /* 1 blank line after last bullet of each experience/project */
+    }
+
+    li {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .edu-line-main {
+      display: flex;
+      align-items: baseline;
+      font-size: 10pt;
+      line-height: 1.0;
+    }
+
+    .edu-left {
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .edu-middle {
+      white-space: nowrap;
+    }
+
+    .edu-fill {
+      flex: 1;
+      border-bottom: 1px dotted #000;
+      margin: 0 4px;
+    }
+
+    .edu-right {
+      white-space: nowrap;
+    }
+
+    .gpa-line {
+      margin-top: 0;
+      margin-bottom: 10px; /* ~1 blank line after GPA */
+    }
+
+
+    .section-additional {
+      margin-top: 10px; /* 1 blank line before ADDITIONAL INFORMATION */
+    }
+  </style>
+</head>
+<body>
+  <!-- Name -->
+  <div class="name">{{ resume.name }}</div>
+
+  <!-- Contact line -->
+  <div class="contact">
+    {%- set bits = [] -%}
+    {%- if resume.contact and resume.contact.email -%}
+      {%- set _ = bits.append(resume.contact.email) -%}
+    {%- endif -%}
+    {%- if resume.contact and resume.contact.phone -%}
+      {%- set _ = bits.append(resume.contact.phone) -%}
+    {%- endif -%}
+    {%- if resume.contact and resume.contact.linkedin -%}
+      {%- set linkedin_url = resume.contact.linkedin -%}
+      {%- if not linkedin_url.startswith("http") -%}
+        {%- set linkedin_url = "https://" + linkedin_url -%}
+      {%- endif -%}
+      {%- set _ = bits.append('<a href="' + linkedin_url + '">' + resume.contact.linkedin + '</a>') -%}
+    {%- endif -%}
+    {%- if resume.contact and resume.contact.location -%}
+      {%- set _ = bits.append(resume.contact.location) -%}
+    {%- endif -%}
+    {{ bits | join(" · ") | safe }}
+  </div>
+
+  <!-- EDUCATION -->
+  {% if resume.education %}
+  <div class="section">
+    <h2>EDUCATION</h2>
+    {% for edu in resume.education %}
+      <div class="edu-line-main">
+        <span class="edu-left">{{ edu.school }}</span>
+        <span class="edu-middle"> — {{ edu.degree }}</span>
+        <span class="edu-fill"></span>
+        <span class="edu-right">
+          {%- if edu.graduation_date -%}
+            {{ edu.graduation_date }}
+          {%- endif -%}
+        </span>
+      </div>
+      <div class="entry-subheader gpa-line">
+        <span>Overall GPA: {{ edu.gpa }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- EXPERIENCE -->
+  {% if resume.experience %}
+  <div class="section">
+    <h2>EXPERIENCE</h2>
+    {% for exp in resume.experience %}
+      <div class="entry-header">
+        <span class="entry-left"><span class="company-name">{{ exp.company }}</span> – <span class="role-location">{{ exp.title }}</span>{% if exp.location %};&nbsp;<span class="role-location">{{ exp.location }}</span>{% endif %}</span>
+        <span class="entry-right">
+          {%- if exp.start_date -%}
+            {{ exp.start_date }}
+          {%- endif -%}
+          {%- if exp.start_date or exp.end_date -%}
+            &nbsp;-&nbsp;
+          {%- endif -%}
+          {%- if exp.end_date -%}
+            {{ exp.end_date }}
+          {%- else -%}
+            Present
+          {%- endif -%}
+        </span>
+      </div>
+      {% if exp.bullets %}
+      <ul class="last-bullet-block">
+        {% for b in exp.bullets %}
+          <li>{{ b }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- PROJECTS -->
+  {% if resume.projects %}
+  <div class="section">
+    <h2>PROJECTS</h2>
+    {% for proj in resume.projects %}
+      <div class="entry-header">
+        <span class="entry-left"><span class="company-name">{{ proj.name }}</span> – <span class="role-location">{{ proj.role }}</span></span>
+        <span class="entry-right">
+          {%- if proj.semester -%}
+            {{ proj.semester }}
+          {%- endif -%}
+        </span>
+      </div>
+      {% if proj.bullets %}
+      <ul class="last-bullet-block">
+        {% for b in proj.bullets %}
+          <li>{{ b }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ADDITIONAL INFORMATION -->
+  {% if resume.additional_info or resume.skills %}
+  <div class="section section-additional">
+    <h2>ADDITIONAL INFORMATION</h2>
+
+    {% if resume.skills %}
+      <div><strong>Computer Skills:</strong> {{ resume.skills | join(" | ") }}</div>
+    {% endif %}
+
+    {% if resume.additional_info %}
+      {% if resume.additional_info.certifications %}
+        <div><strong>Certifications:</strong> {{ resume.additional_info.certifications | join(", ") }}</div>
+      {% endif %}
+      {% if resume.additional_info.languages %}
+        <div><strong>Languages:</strong> {{ resume.additional_info.languages | join(", ") }}</div>
+      {% endif %}
+      {% if resume.additional_info.work_eligibility %}
+        <div><strong>Work Eligibility:</strong> {{ resume.additional_info.work_eligibility }}</div>
+      {% endif %}
+      {% if resume.additional_info.other %}
+        <div>{{ resume.additional_info.other }}</div>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+</body>
+</html>
+
+
