@@ -36,6 +36,16 @@ def format_resume_text(resume: Resume) -> str:
             lines.append(" | ".join(contact_bits))
             lines.append("")
 
+    # Headline
+    if resume.headline:
+        lines.append(resume.headline)
+        lines.append("")
+
+    # Summary
+    if resume.summary:
+        lines.append(resume.summary)
+        lines.append("")
+
     # EDUCATION
     if resume.education:
         lines.append("EDUCATION")
@@ -77,14 +87,69 @@ def format_resume_text(resume: Resume) -> str:
 
     # PROJECTS
     if resume.projects:
+        lines.append("")  # 1 line space before PROJECTS
         lines.append("PROJECTS")
         for proj in resume.projects:
             header = proj.name
             if proj.role:
                 header += f" — {proj.role}"
+            if proj.semester:
+                header += f" ({proj.semester})"
             lines.append(header)
             for b in proj.bullets:
                 lines.append(f"- {b}")
+            lines.append("")
+        lines.append("")
+
+    # VOLUNTEER WORK
+    if resume.volunteer_work:
+        lines.append("VOLUNTEER WORK")
+        for vol in resume.volunteer_work:
+            header = vol.organization
+            if vol.role:
+                header += f" — {vol.role}"
+            if vol.location:
+                header += f" ({vol.location})"
+            lines.append(header)
+            if vol.start_date or vol.end_date:
+                date_range = (vol.start_date or "") + " to " + (vol.end_date or "Present")
+                lines.append(date_range)
+            if vol.bullets:
+                for b in vol.bullets:
+                    lines.append(f"- {b}")
+            lines.append("")
+        lines.append("")
+
+    # AWARDS
+    if resume.awards:
+        lines.append("AWARDS & HONORS")
+        for award in resume.awards:
+            award_line = award.title
+            if award.organization:
+                award_line += f" — {award.organization}"
+            if award.date:
+                award_line += f" ({award.date})"
+            lines.append(award_line)
+            if award.description:
+                lines.append(f"  {award.description}")
+        lines.append("")
+
+    # PUBLICATIONS
+    if resume.publications:
+        lines.append("PUBLICATIONS")
+        for pub in resume.publications:
+            lines.append(pub.title)
+            details = []
+            if pub.authors:
+                details.append(f"Authors: {pub.authors}")
+            if pub.venue:
+                details.append(f"Venue: {pub.venue}")
+            if pub.date:
+                details.append(f"Date: {pub.date}")
+            if details:
+                lines.append(" | ".join(details))
+            if pub.url:
+                lines.append(f"URL: {pub.url}")
             lines.append("")
         lines.append("")
 
@@ -92,9 +157,18 @@ def format_resume_text(resume: Resume) -> str:
     if resume.additional_info or resume.skills:
         lines.append("ADDITIONAL INFORMATION")
 
-        # Computer Skills from top-level skills
-        if resume.skills:
-            lines.append("Computer Skills: " + ", ".join(resume.skills))
+        if resume.additional_info:
+            # Computer/Technical Skills (if present as string) - prioritize over top-level skills
+            if resume.additional_info.computer_skills:
+                lines.append("Computer Skills: " + resume.additional_info.computer_skills)
+            elif resume.additional_info.technical_skills:
+                lines.append("Technical Skills: " + resume.additional_info.technical_skills)
+            elif resume.skills:
+                # Only show top-level skills if no computer/technical skills are present
+                lines.append("Skills: " + ", ".join(resume.skills))
+        elif resume.skills:
+            # Show top-level skills if no additional_info
+            lines.append("Skills: " + ", ".join(resume.skills))
 
         if resume.additional_info:
             if resume.additional_info.certifications:
@@ -104,6 +178,10 @@ def format_resume_text(resume: Resume) -> str:
             if resume.additional_info.languages:
                 lines.append(
                     "Languages: " + ", ".join(resume.additional_info.languages)
+                )
+            if resume.additional_info.professional_memberships:
+                lines.append(
+                    "Professional Memberships: " + ", ".join(resume.additional_info.professional_memberships)
                 )
             if resume.additional_info.work_eligibility:
                 lines.append("Work Eligibility: " + resume.additional_info.work_eligibility)

@@ -56,6 +56,8 @@ Make sure the field NAMES and TYPES are EXACTLY as specified:
 
 {{
   "name": "string",
+  "headline": "string (optional - professional headline/title if present)",
+  "summary": "string (optional - professional summary/objective if present)",
 
   "contact": {{
     "email": "string",
@@ -67,7 +69,8 @@ Make sure the field NAMES and TYPES are EXACTLY as specified:
   "education": [
     {{
       "school": "string",
-      "degree": "string",
+      "degree": "string (e.g., 'Bachelor of Science', 'Master of Arts')",
+      "major": "string (e.g., 'Computer Science', 'Business Administration') - REQUIRED if degree is present",
       "location": "string",
       "graduation_date": "string (format as 'Month YYYY' like 'December 2026', not 'YYYY-MM')",
       "gpa": "string"
@@ -89,16 +92,49 @@ Make sure the field NAMES and TYPES are EXACTLY as specified:
     {{
       "name": "string",
       "role": "string",
-      "semester": "string (e.g. 'Fall 2025', 'Spring 2024', etc. Extract from resume if present)",
+      "semester": "string (e.g. 'Fall 2025', 'Spring 2024', 'September 2025', 'Month YYYY' format. Extract ANY date or semester information from the project entry and put it here, NOT in the role field)",
       "bullets": ["string", "string", ...]
     }}
   ],
 
+  "volunteer_work": [
+    {{
+      "organization": "string",
+      "role": "string",
+      "location": "string",
+      "start_date": "string (format as 'Month YYYY')",
+      "end_date": "string (format as 'Month YYYY' or 'Present')",
+      "bullets": ["string", "string", ...]
+    }}
+  ],
+
+  "awards": [
+    {{
+      "title": "string",
+      "organization": "string",
+      "date": "string (format as 'Month YYYY' or 'YYYY')",
+      "description": "string"
+    }}
+  ],
+
+  "publications": [
+    {{
+      "title": "string",
+      "authors": "string",
+      "venue": "string (journal, conference, etc.)",
+      "date": "string (format as 'Month YYYY' or 'YYYY')",
+      "url": "string"
+    }}
+  ],
+
   "additional_info": {{
-    "computer_skills": "string",
+    "computer_skills": "string (for technical/IT roles - extract skills section if labeled as 'Computer Skills', 'Technical Skills', etc.)",
+    "technical_skills": "string (alternative to computer_skills for non-tech roles - any technical competencies)",
     "certifications": ["string", "string", ...],
     "languages": ["string", "string", ...],
-    "work_eligibility": "string"
+    "work_eligibility": "string",
+    "professional_memberships": ["string", "string", ...],
+    "other": "string (any other additional information that doesn't fit above categories)"
   }},
 
   "skills": ["string", "string", ...]
@@ -108,14 +144,43 @@ RULES:
 - Extract ONLY information that actually appears in the resume text.
 - Do NOT invent jobs, dates, companies, or skills.
 - If a field is missing, set it to an empty string, empty list, or empty object as appropriate.
-- "education" MUST be a list (it can have just 1 item).
+- **NAME EXTRACTION**: The "name" field should be extracted from the very top of the resume, typically the largest text at the beginning. Extract the full name exactly as it appears (e.g., "Aswath Manu", "SWATH ANU", etc.). Do NOT extract email addresses or other contact information as the name.
+- "education" MUST be a list (it can have just 1 item, or empty list if no education section).
 - Each education entry MUST use the key "school", NOT "institution".
+- **EDUCATION PARSING**: Separate degree and major into two fields:
+  * "degree": The degree type (e.g., "Bachelor of Science", "Master of Arts", "PhD")
+  * "major": The field of study/major (e.g., "Computer Science", "Business Administration", "Biology")
+  * If the resume shows "Bachelor of Science in Computer Science" or "B.S., Computer Science", split it into degree="Bachelor of Science" and major="Computer Science"
 - If a GPA is present, put it in the "gpa" field as a short string (e.g. "3.6"). If no GPA is present, set "gpa" to an empty string.
-- DATE FORMATTING: Format all dates as "Month YYYY" (e.g., "December 2026", "October 2025", "April 2021"). Do NOT use "YYYY-MM" format.
-- For projects, extract semester information if present (e.g., "Fall 2025", "Spring 2024"). Look for semester indicators near project entries.
+- DATE FORMATTING: Format all dates as "Month YYYY" (e.g., "December 2026", "October 2025", "April 2021"). Do NOT use "YYYY-MM" format. If only year is available, use just "YYYY".
+- **PROJECTS SECTION**: The "projects" field should include content from sections labeled as:
+  * "PROJECTS" or "Projects"
+  * "EXTRACURRICULAR ACTIVITIES" or "Extracurricular Activities"
+  * Any similar section that describes projects, activities, or initiatives (not work experience)
+  * If the resume has "EXTRACURRICULAR ACTIVITIES" instead of "PROJECTS", map that content to the "projects" field
+- "projects" is OPTIONAL - only include if the resume has a projects or extracurricular activities section. If no projects, use empty list [].
+- **PROJECT DATE/SEMESTER EXTRACTION**: For projects, extract ANY date or semester information (e.g., "Fall 2025", "Spring 2024", "September 2025", "December 2023", etc.) and put it in the "semester" field. Dates can be in "Month YYYY" format (like "September 2025") or semester format (like "Fall 2025"). 
+- **CRITICAL**: Do NOT include dates or semesters in the "role" field. The "role" field should only contain the role/title (e.g., "Officer/Education Lead"), and the date/semester should ALWAYS go in the "semester" field. If a project entry shows "Organization Name – Role – Date", extract the date separately into the "semester" field, not as part of the role.
+- **VOLUNTEER WORK CLASSIFICATION**: Only classify entries as "volunteer_work" if they are actual volunteer activities (e.g., volunteering at a food bank, community service, charity work). Do NOT classify the following as volunteer work:
+  * Professional organizations or associations (e.g., "Financial Leadership Association", "IEEE", "ACM")
+  * Student clubs or academic organizations (unless explicitly described as volunteer work)
+  * Professional memberships - these should go in "additional_info.professional_memberships" instead
+  * Extracurricular activities that are not explicitly volunteer work - these should go in "projects" instead
+- "volunteer_work", "awards", and "publications" are OPTIONAL - only include if present in the resume. Use empty lists [] if not present.
+- SKILLS EXTRACTION: Extract ALL skills, tools, technologies, and competencies mentioned anywhere in the resume:
+  * From dedicated skills sections (e.g., "Skills", "Technical Skills", "Computer Skills", "Core Competencies")
+  * From experience bullet points (e.g., "Used Python and SQL to...")
+  * From project descriptions
+  * From education coursework
+  * Include: programming languages, software, frameworks, methodologies, tools, platforms, etc.
+  * Put all extracted skills in the top-level "skills" array.
+- "additional_info.computer_skills" or "additional_info.technical_skills": If there's a dedicated skills section in the resume, extract the raw text here (as a single string, preserving separators like commas, pipes, etc.). This is separate from the structured "skills" array.
 - "additional_info.certifications" MUST be a list of strings (one cert per element).
 - "additional_info.languages" MUST be a list of strings (one language per element).
+- "additional_info.professional_memberships" MUST be a list of strings (e.g., ["IEEE", "ACM", "American Medical Association"]).
 - Put email, phone number, LinkedIn URL, and location inside the `contact` object (do NOT repeat them as top-level fields).
+- Extract "headline" if there's a professional title/headline below the name.
+- Extract "summary" if there's a professional summary, objective, or profile section.
 - Return ONLY valid JSON. No comments, no markdown, no explanations.
 
 RAW RESUME TEXT:

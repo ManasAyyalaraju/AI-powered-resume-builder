@@ -1,0 +1,266 @@
+\documentclass[10pt,letterpaper]{article}
+
+% Packages
+\usepackage[margin=0.5in]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{fontenc}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}  % Times New Roman font
+
+% Hyperlink setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    pdfborder={0 0 0}
+}
+
+% Remove page numbers
+\pagestyle{empty}
+
+% Improve text justification and line breaking for better bullet point formatting
+% Allow more flexible spacing and better line filling
+\tolerance=500
+\emergencystretch=3em
+\hyphenpenalty=50
+\exhyphenpenalty=50
+
+% Set spacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\setlist[itemize]{leftmargin=14pt, itemsep=0pt, parsep=0pt, topsep=0pt}
+
+% Section formatting
+\titleformat{\section}
+  {\normalfont\bfseries\uppercase}
+  {}
+  {0em}
+  {}
+  [\titlerule]
+
+\titlespacing*{\section}{0pt}{10pt}{2pt}
+
+% Custom commands
+\newcommand{\resumeHeader}[1]{
+  \begin{center}
+    {\huge\bfseries #1}
+  \end{center}
+  \vspace{-5pt}
+}
+
+\newcommand{\resumeContact}[1]{
+  \begin{center}
+    #1
+  \end{center}
+  \vspace{10pt}
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \noindent
+  \begin{minipage}[t]{0.7\textwidth}
+    \textbf{#1} -- \textit{#2}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.25\textwidth}
+    \raggedleft #3 -- #4
+  \end{minipage}
+  \vspace{1pt}
+}
+
+\newcommand{\resumeEducation}[2]{
+  \noindent
+  \begin{minipage}[t]{0.7\textwidth}
+    \textbf{#1}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.25\textwidth}
+    \raggedleft #2
+  \end{minipage}
+  \vspace{1pt}
+}
+
+\newcommand{\resumeProjectHeading}[3]{
+  \noindent
+  \begin{minipage}[t]{0.7\textwidth}
+    \textbf{#1} -- \textit{#2}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.25\textwidth}
+    \raggedleft #3
+  \end{minipage}
+  \vspace{1pt}
+}
+
+\begin{document}
+
+% Name
+\resumeHeader{VAR{resume.name|escape_latex}}
+
+% Contact Information
+\resumeContact{
+  %{ if resume.contact %}
+    %{ if resume.contact.email %}VAR{resume.contact.email|escape_latex}%{ endif %}
+    %{ if resume.contact.email and resume.contact.phone %} $\cdot$ %{ endif %}
+    %{ if resume.contact.phone %}VAR{resume.contact.phone|escape_latex}%{ endif %}
+    %{ if (resume.contact.email or resume.contact.phone) and resume.contact.linkedin %} $\cdot$ %{ endif %}
+    %{ if resume.contact.linkedin %}\href{VAR{resume.contact.linkedin|escape_latex}}{VAR{resume.contact.linkedin|escape_latex}}%{ endif %}
+  %{ endif %}
+}
+
+% Headline
+%{ if resume.headline %}
+\begin{center}
+  \textit{VAR{resume.headline|escape_latex}}
+\end{center}
+\vspace{5pt}
+%{ endif %}
+
+% Summary
+%{ if resume.summary %}
+\noindent
+VAR{resume.summary|escape_latex}
+\vspace{10pt}
+%{ endif %}
+
+% Education
+%{ if resume.education %}
+\section*{EDUCATION}
+%{ for edu in resume.education %}
+\resumeEducation{VAR{edu.school|escape_latex} -- %{ if edu.major %}VAR{edu.major|escape_latex}, %{ endif %}VAR{edu.degree|escape_latex}}{%{ if edu.graduation_date %}VAR{edu.graduation_date|escape_latex}%{ endif %}}
+%{ if edu.gpa %}
+\noindent Overall GPA: VAR{edu.gpa|escape_latex}
+%{ endif %}
+\vspace{5pt}
+%{ endfor %}
+%{ endif %}
+
+% Experience
+%{ if resume.experience %}
+\section*{EXPERIENCE}
+%{ for exp in resume.experience %}
+\resumeSubheading{VAR{exp.company|escape_latex}}{VAR{exp.title|escape_latex}}{%{ if exp.start_date %}VAR{exp.start_date|escape_latex}%{ endif %}}{%{ if exp.end_date %}VAR{exp.end_date|escape_latex}%{ else %}Present%{ endif %}}
+%{ if exp.bullets %}
+\begin{itemize}
+%{ for bullet in exp.bullets %}
+  \item VAR{bullet|escape_latex}
+%{ endfor %}
+\end{itemize}
+\vspace{5pt}
+%{ endif %}
+%{ endfor %}
+%{ endif %}
+
+% Projects
+%{ if resume.projects %}
+\section*{PROJECTS}
+%{ for proj in resume.projects %}
+\resumeProjectHeading{VAR{proj.name|escape_latex}}{%{ if proj.role %}VAR{proj.role|escape_latex}%{ endif %}}{%{ if proj.semester %}VAR{proj.semester|escape_latex}%{ endif %}}
+%{ if proj.bullets %}
+\begin{itemize}
+%{ for bullet in proj.bullets %}
+  \item VAR{bullet|escape_latex}
+%{ endfor %}
+\end{itemize}
+\vspace{5pt}
+%{ endif %}
+%{ endfor %}
+%{ endif %}
+
+% Volunteer Work
+%{ if resume.volunteer_work %}
+\section*{VOLUNTEER WORK}
+%{ for vol in resume.volunteer_work %}
+\resumeSubheading{VAR{vol.organization|escape_latex}}{%{ if vol.role %}VAR{vol.role|escape_latex}%{ endif %}}{%{ if vol.start_date %}VAR{vol.start_date|escape_latex}%{ endif %}}{%{ if vol.end_date %}VAR{vol.end_date|escape_latex}%{ else %}Present%{ endif %}}
+%{ if vol.bullets %}
+\begin{itemize}
+%{ for bullet in vol.bullets %}
+  \item VAR{bullet|escape_latex}
+%{ endfor %}
+\end{itemize}
+\vspace{5pt}
+%{ endif %}
+%{ endfor %}
+%{ endif %}
+
+% Awards
+%{ if resume.awards %}
+\section*{AWARDS \& HONORS}
+%{ for award in resume.awards %}
+\noindent
+\begin{minipage}[t]{0.7\textwidth}
+  \textbf{VAR{award.title|escape_latex}}%{ if award.organization %} -- \textit{VAR{award.organization|escape_latex}}%{ endif %}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.25\textwidth}
+  \raggedleft %{ if award.date %}VAR{award.date|escape_latex}%{ endif %}
+\end{minipage}
+%{ if award.description %}
+\par\noindent VAR{award.description|escape_latex}
+%{ endif %}
+\vspace{5pt}
+%{ endfor %}
+%{ endif %}
+
+% Publications
+%{ if resume.publications %}
+\section*{PUBLICATIONS}
+%{ for pub in resume.publications %}
+\noindent\textbf{VAR{pub.title|escape_latex}}
+%{ if pub.authors or pub.venue or pub.date %}
+\par\noindent\textit{
+%{ if pub.authors %}VAR{pub.authors|escape_latex}%{ endif %}
+%{ if pub.authors and pub.venue %}, %{ endif %}
+%{ if pub.venue %}VAR{pub.venue|escape_latex}%{ endif %}
+%{ if (pub.authors or pub.venue) and pub.date %} (%{ endif %}
+%{ if pub.date %}VAR{pub.date|escape_latex}%{ endif %}
+%{ if (pub.authors or pub.venue) and pub.date %})%{ endif %}
+}
+%{ endif %}
+%{ if pub.url %}
+\par\noindent\href{VAR{pub.url|escape_latex}}{VAR{pub.url|escape_latex}}
+%{ endif %}
+\vspace{5pt}
+%{ endfor %}
+%{ endif %}
+
+% Additional Information
+%{ if resume.additional_info or resume.skills %}
+\section*{ADDITIONAL INFORMATION}
+
+%{ if resume.additional_info %}
+  %{ if resume.additional_info.computer_skills %}
+\noindent\textbf{Computer Skills:} VAR{resume.additional_info.computer_skills|escape_latex}
+  %{ elif resume.additional_info.technical_skills %}
+\noindent\textbf{Technical Skills:} VAR{resume.additional_info.technical_skills|escape_latex}
+  %{ elif resume.skills %}
+\noindent\textbf{Skills:} %{ for skill in resume.skills %}VAR{skill|escape_latex}%{ if not loop.last %} $|$ %{ endif %}%{ endfor %}
+  %{ endif %}
+%{ elif resume.skills %}
+\noindent\textbf{Skills:} %{ for skill in resume.skills %}VAR{skill|escape_latex}%{ if not loop.last %} $|$ %{ endif %}%{ endfor %}
+%{ endif %}
+
+%{ if resume.additional_info %}
+  %{ if resume.additional_info.certifications %}
+\par\noindent\textbf{Certifications:} %{ for cert in resume.additional_info.certifications %}VAR{cert|escape_latex}%{ if not loop.last %}, %{ endif %}%{ endfor %}
+  %{ endif %}
+  %{ if resume.additional_info.languages %}
+\par\noindent\textbf{Languages:} %{ for lang in resume.additional_info.languages %}VAR{lang|escape_latex}%{ if not loop.last %}, %{ endif %}%{ endfor %}
+  %{ endif %}
+  %{ if resume.additional_info.professional_memberships %}
+\par\noindent\textbf{Professional Memberships:} %{ for mem in resume.additional_info.professional_memberships %}VAR{mem|escape_latex}%{ if not loop.last %}, %{ endif %}%{ endfor %}
+  %{ endif %}
+  %{ if resume.additional_info.work_eligibility %}
+\par\noindent\textbf{Work Eligibility:} VAR{resume.additional_info.work_eligibility|escape_latex}
+  %{ endif %}
+  %{ if resume.additional_info.other %}
+\par\noindent VAR{resume.additional_info.other|escape_latex}
+  %{ endif %}
+%{ endif %}
+%{ endif %}
+
+\end{document}
+

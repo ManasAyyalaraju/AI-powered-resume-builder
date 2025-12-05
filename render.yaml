@@ -1,0 +1,24 @@
+services:
+  # Backend API Service
+  - type: web
+    name: auto-resume-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon  # Choose your preferred region
+    plan: free  # Change to 'starter' for always-on service ($7/month)
+    
+    # Environment variables
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: PORT
+        value: 8000
+    
+    # Health check endpoint
+    healthCheckPath: /health
+    
+    # Auto-deploy settings
+    autoDeploy: true
+    branch: master  # or 'main' depending on your repo
+

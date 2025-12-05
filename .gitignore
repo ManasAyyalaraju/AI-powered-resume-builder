@@ -35,7 +35,10 @@ env/
 .env
 .env.local
 .env.*.local
-*.env
+# Allow .env.example to be committed
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 
 # IDE - VSCode
 .vscode/

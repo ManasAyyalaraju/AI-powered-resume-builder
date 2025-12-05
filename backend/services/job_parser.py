@@ -19,13 +19,19 @@ Convert the following job description text into a JSON object with this structur
   "location": "string",         // location if present, else ""
   "employment_type": "string",  // e.g. Internship, Full-time, etc. or ""
   "raw_text": "string",         // full original JD text
-  "key_skills": ["string", "string", ...]  // list of important skills/keywords from the JD
+  "must_have_skills": ["string", "string", ...],  // required/critical skills
+  "nice_to_have_skills": ["string", "string", ...],  // preferred but not required skills
+  "keywords": ["string", "string", ...],  // important keywords for ATS matching
+  "responsibilities": ["string", "string", ...]  // key responsibilities (optional)
 }}
 
 Rules:
 - Extract ONLY what appears in the text.
 - If a field is missing, use an empty string "" or empty list [].
-- "key_skills" should be a list of short skill/keyword strings (e.g. "Python", "SQL", "Tableau").
+- "must_have_skills": Skills explicitly stated as required, essential, or mandatory
+- "nice_to_have_skills": Skills mentioned as preferred, bonus, or advantageous
+- "keywords": Important industry terms, methodologies, or concepts for ATS matching
+- Extract skills from ANY domain (tech, healthcare, finance, marketing, etc.)
 - Return ONLY valid JSON. Do NOT wrap it in markdown or backticks.
 
 JOB DESCRIPTION TEXT:

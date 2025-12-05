@@ -42,6 +42,7 @@
 
     .section {
       margin-top: 0;
+      margin-bottom: 0;
       page-break-inside: avoid;
     }
 
@@ -52,15 +53,15 @@
       margin-bottom: 0;
       position: relative;
       padding-right: 0;
+      display: block;
+      overflow: hidden;
     }
 
     .entry-header .entry-left {
-      display: inline-block;
-      white-space: nowrap;
-      max-width: calc(100% - 200px);
+      display: block;
+      max-width: calc(100% - 150px);
       padding-right: 20px;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      float: left;
     }
 
     .entry-header .entry-right {
@@ -165,6 +166,20 @@
     {{ bits | join(" · ") | safe }}
   </div>
 
+  <!-- Headline -->
+  {% if resume.headline %}
+  <div style="text-align: center; margin-bottom: 10px; font-style: italic; font-size: 10pt;">
+    {{ resume.headline }}
+  </div>
+  {% endif %}
+
+  <!-- Summary -->
+  {% if resume.summary %}
+  <div style="margin-bottom: 10px; font-size: 10pt; text-align: justify;">
+    {{ resume.summary }}
+  </div>
+  {% endif %}
+
   <!-- EDUCATION -->
   {% if resume.education %}
   <div class="section">
@@ -172,7 +187,7 @@
     {% for edu in resume.education %}
       <div class="edu-line-main">
         <span class="edu-left">{{ edu.school }}</span>
-        <span class="edu-middle"> — {{ edu.degree }}</span>
+        <span class="edu-middle"> — {% if edu.major %}{{ edu.major }}, {% endif %}{{ edu.degree }}</span>
         <span class="edu-fill"></span>
         <span class="edu-right">
           {%- if edu.graduation_date -%}
@@ -180,9 +195,11 @@
           {%- endif -%}
         </span>
       </div>
+      {% if edu.gpa %}
       <div class="entry-subheader gpa-line">
         <span>Overall GPA: {{ edu.gpa }}</span>
       </div>
+      {% endif %}
     {% endfor %}
   </div>
   {% endif %}
@@ -221,7 +238,7 @@
 
   <!-- PROJECTS -->
   {% if resume.projects %}
-  <div class="section">
+  <div class="section" style="margin-top: 10px;">
     <h2>PROJECTS</h2>
     {% for proj in resume.projects %}
       <div class="entry-header">
@@ -243,13 +260,110 @@
   </div>
   {% endif %}
 
+  <!-- VOLUNTEER WORK -->
+  {% if resume.volunteer_work %}
+  <div class="section">
+    <h2>VOLUNTEER WORK</h2>
+    {% for vol in resume.volunteer_work %}
+      <div class="entry-header">
+        <span class="entry-left"><span class="company-name">{{ vol.organization }}</span>{% if vol.role %} – <span class="role-location">{{ vol.role }}</span>{% endif %}{% if vol.location %};&nbsp;<span class="role-location">{{ vol.location }}</span>{% endif %}</span>
+        <span class="entry-right">
+          {%- if vol.start_date -%}
+            {{ vol.start_date }}
+          {%- endif -%}
+          {%- if vol.start_date or vol.end_date -%}
+            &nbsp;-&nbsp;
+          {%- endif -%}
+          {%- if vol.end_date -%}
+            {{ vol.end_date }}
+          {%- else -%}
+            Present
+          {%- endif -%}
+        </span>
+      </div>
+      {% if vol.bullets %}
+      <ul class="last-bullet-block">
+        {% for b in vol.bullets %}
+          <li>{{ b }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- AWARDS -->
+  {% if resume.awards %}
+  <div class="section">
+    <h2>AWARDS & HONORS</h2>
+    {% for award in resume.awards %}
+      <div class="entry-header">
+        <span class="entry-left"><span class="company-name">{{ award.title }}</span>{% if award.organization %} – <span class="role-location">{{ award.organization }}</span>{% endif %}</span>
+        <span class="entry-right">
+          {%- if award.date -%}
+            {{ award.date }}
+          {%- endif -%}
+        </span>
+      </div>
+      {% if award.description %}
+      <div class="entry-subheader" style="margin-bottom: 10px;">
+        {{ award.description }}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- PUBLICATIONS -->
+  {% if resume.publications %}
+  <div class="section">
+    <h2>PUBLICATIONS</h2>
+    {% for pub in resume.publications %}
+      <div class="entry-subheader" style="margin-bottom: 5px;">
+        <strong>{{ pub.title }}</strong>
+      </div>
+      {% if pub.authors or pub.venue or pub.date %}
+      <div class="entry-subheader" style="margin-bottom: 5px; font-style: italic;">
+        {%- if pub.authors -%}
+          {{ pub.authors }}
+        {%- endif -%}
+        {%- if pub.authors and pub.venue -%}, {% endif %}
+        {%- if pub.venue -%}
+          {{ pub.venue }}
+        {%- endif -%}
+        {%- if (pub.authors or pub.venue) and pub.date -%} ({% endif %}
+        {%- if pub.date -%}
+          {{ pub.date }}
+        {%- endif -%}
+        {%- if (pub.authors or pub.venue) and pub.date -%}){% endif %}
+      </div>
+      {% endif %}
+      {% if pub.url %}
+      <div class="entry-subheader" style="margin-bottom: 10px;">
+        <a href="{{ pub.url }}">{{ pub.url }}</a>
+      </div>
+      {% else %}
+      <div style="margin-bottom: 10px;"></div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <!-- ADDITIONAL INFORMATION -->
   {% if resume.additional_info or resume.skills %}
   <div class="section section-additional">
     <h2>ADDITIONAL INFORMATION</h2>
 
-    {% if resume.skills %}
-      <div><strong>Computer Skills:</strong> {{ resume.skills | join(" | ") }}</div>
+    {% if resume.additional_info %}
+      {% if resume.additional_info.computer_skills %}
+        <div><strong>Computer Skills:</strong> {{ resume.additional_info.computer_skills }}</div>
+      {% elif resume.additional_info.technical_skills %}
+        <div><strong>Technical Skills:</strong> {{ resume.additional_info.technical_skills }}</div>
+      {% elif resume.skills %}
+        <div><strong>Skills:</strong> {{ resume.skills | join(" | ") }}</div>
+      {% endif %}
+    {% elif resume.skills %}
+      <div><strong>Skills:</strong> {{ resume.skills | join(" | ") }}</div>
     {% endif %}
 
     {% if resume.additional_info %}
@@ -258,6 +372,9 @@
       {% endif %}
       {% if resume.additional_info.languages %}
         <div><strong>Languages:</strong> {{ resume.additional_info.languages | join(", ") }}</div>
+      {% endif %}
+      {% if resume.additional_info.professional_memberships %}
+        <div><strong>Professional Memberships:</strong> {{ resume.additional_info.professional_memberships | join(", ") }}</div>
       {% endif %}
       {% if resume.additional_info.work_eligibility %}
         <div><strong>Work Eligibility:</strong> {{ resume.additional_info.work_eligibility }}</div>

@@ -6,7 +6,7 @@ from services.keyword_extractor import extract_skills_and_keywords
 from services.pdf_writer import render_resume_pdf
 from fastapi.responses import StreamingResponse
 
-router = APIRouter(prefix="/api", tags=["Tailoring"])
+router = APIRouter(tags=["Tailoring"])
 
 @router.post("/tailor/pdf")
 async def tailor_resume_from_pdf(
@@ -30,7 +30,7 @@ async def tailor_resume_from_pdf(
     # 1) PDF -> Resume Object
     resume = parse_pdf_resume_to_json(temp_path)
 
-    # Normalize skills from the "Computer Skills" line if present.
+    # Normalize skills from the "Computer Skills" or "Technical Skills" line if present.
     # The PDF often has a single pipe- or comma-separated string like
     # "Python | SQL | PostgreSQL | Tableau | Power BI | Jira".
     if getattr(resume.additional_info, "computer_skills", None):
@@ -41,19 +41,28 @@ async def tailor_resume_from_pdf(
         parsed_skills = [s.strip() for s in raw_skills.split(",") if s.strip()]
         if parsed_skills:
             resume.skills = parsed_skills
+    elif getattr(resume.additional_info, "technical_skills", None):
+        raw_skills = resume.additional_info.technical_skills
+        for sep in ["|", ";"]:
+            raw_skills = raw_skills.replace(sep, ",")
+        parsed_skills = [s.strip() for s in raw_skills.split(",") if s.strip()]
+        if parsed_skills:
+            resume.skills = parsed_skills
 
     # 2) JD text -> JobDescription
     jd = parse_job_description_from_text(jd_text)
 
-    # 2b) Augment skills using trusted KNOWN_SKILLS that appear in the JD text.
-    # This lets us add truthful but previously unlisted tools you've used,
-    # as long as they are both in KNOWN_SKILLS and mentioned in the JD.
-    must_have_from_jd, nice_to_have_from_jd, _ = extract_skills_and_keywords(jd_text)
-    existing_lower = {s.lower() for s in resume.skills}
-    for skill in must_have_from_jd + nice_to_have_from_jd:
-        if skill.lower() not in existing_lower:
-            resume.skills.append(skill)
-            existing_lower.add(skill.lower())
+    # 2b) Extract skills from JD and add to resume if they appear in the resume text
+    # This helps identify skills that were mentioned in experience but not explicitly listed.
+    # We only add skills that are both in the JD requirements AND can be found in the resume content.
+    if not resume.skills or len(resume.skills) == 0:
+        # If no skills were extracted, try to extract from the full resume text
+        # This is a fallback - ideally skills should be extracted during PDF parsing
+        pass
+    
+    # Note: We no longer automatically add JD skills to the resume.
+    # Skills should be extracted from the resume itself during parsing.
+    # The JD skills are used for tailoring/emphasis, not for adding new skills.
 
     # 3) Tailor
     tailored_resume = tailor_resume(resume, jd)

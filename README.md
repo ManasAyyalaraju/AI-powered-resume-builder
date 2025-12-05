@@ -34,7 +34,8 @@ auto-resume/
 │   │   ├── tailor_engine.py   # Core tailoring logic
 │   │   └── resume_formatter.py # Resume formatting
 │   ├── templates/
-│   │   └── resume_template.html # PDF resume template
+│   │   ├── resume_template.tex  # LaTeX resume template (primary)
+│   │   └── resume_template.html # HTML resume template (legacy)
 │   ├── app.py                 # FastAPI application
 │   ├── main.py                # Alternative entry point
 │   ├── cli_demo.py            # CLI interface
@@ -49,6 +50,10 @@ auto-resume/
 
 - Python 3.11 or higher
 - OpenAI API key (or compatible LLM API)
+- **LaTeX distribution** (for PDF generation):
+  - Windows: [MiKTeX](https://miktex.org/)
+  - macOS: MacTeX (`brew install --cask mactex-no-gui`)
+  - Linux: TeX Live (`sudo apt-get install texlive-latex-base texlive-fonts-recommended`)
 
 ## Installation
 
@@ -75,7 +80,16 @@ auto-resume/
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables**
+4. **Install LaTeX** (required for PDF generation)
+   
+   See [LATEX_SETUP.md](LATEX_SETUP.md) for detailed installation instructions.
+   
+   Quick install:
+   - **Windows**: Download and install [MiKTeX](https://miktex.org/download)
+   - **macOS**: `brew install --cask mactex-no-gui`
+   - **Linux**: `sudo apt-get install texlive-latex-base texlive-fonts-recommended`
+
+5. **Set up environment variables**
    
    Create a `.env` file in the `backend/` directory:
    ```env
@@ -187,9 +201,10 @@ The configuration is managed in `backend/core/config.py` using Pydantic Settings
 Key dependencies include:
 - **FastAPI**: Modern web framework for building APIs
 - **OpenAI**: LLM integration for resume tailoring
-- **xhtml2pdf**: PDF generation from HTML templates
+- **LaTeX (pdflatex)**: Professional PDF generation with superior typography
 - **Pydantic**: Data validation and settings management
 - **python-dotenv**: Environment variable management
+- **Jinja2**: Template rendering for LaTeX documents
 
 See `backend/requirements.txt` for the complete list.
 
@@ -207,7 +222,17 @@ See `backend/requirements.txt` for the complete list.
 1. **New Resume Sections**: Update `backend/models/resume_models.py`
 2. **Custom Tailoring Logic**: Modify `backend/services/tailor_engine.py`
 3. **New API Endpoints**: Add routes in `backend/routers/tailor_routes.py`
-4. **PDF Template Changes**: Edit `backend/templates/resume_template.html`
+4. **PDF Template Changes**: Edit `backend/templates/resume_template.tex` (LaTeX template)
+
+### LaTeX PDF Generation
+
+The system now uses LaTeX for PDF generation, providing:
+- ✅ Professional typography and formatting
+- ✅ Precise control over spacing and alignment
+- ✅ ATS-friendly PDF structure
+- ✅ Consistent output across all platforms
+
+See [LATEX_SETUP.md](LATEX_SETUP.md) for installation and troubleshooting.
 
 ## Contributing
 
@@ -225,5 +250,6 @@ This project is open source and available under the MIT License.
 ## Acknowledgments
 
 - Built with FastAPI and OpenAI
-- Uses xhtml2pdf for PDF generation
+- Uses LaTeX for professional PDF generation
+- Jinja2 for template rendering
 

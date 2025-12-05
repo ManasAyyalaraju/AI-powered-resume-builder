@@ -12,6 +12,7 @@ class Contact(BaseModel):
 class EducationEntry(BaseModel):
     school: str
     degree: str
+    major: Optional[str] = None            # e.g. "Computer Science"
     graduation_date: Optional[str] = None  # e.g. "May 2026"
     gpa: Optional[str] = None              # e.g. "3.8/4.0"
     location: Optional[str] = None
@@ -33,11 +34,37 @@ class Project(BaseModel):
     bullets: List[str]
 
 
+class VolunteerWork(BaseModel):
+    organization: str
+    role: Optional[str] = None
+    location: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    bullets: List[str] = []
+
+
+class Award(BaseModel):
+    title: str
+    organization: Optional[str] = None
+    date: Optional[str] = None
+    description: Optional[str] = None
+
+
+class Publication(BaseModel):
+    title: str
+    authors: Optional[str] = None
+    venue: Optional[str] = None  # journal, conference, etc.
+    date: Optional[str] = None
+    url: Optional[str] = None
+
+
 class AdditionalInfo(BaseModel):
     computer_skills: Optional[str] = None
+    technical_skills: Optional[str] = None  # Alternative to computer_skills for non-tech roles
     certifications: List[str] = []
     languages: List[str] = []
     work_eligibility: Optional[str] = None
+    professional_memberships: List[str] = []  # e.g., "IEEE", "ACM", "AMA"
     other: Optional[str] = None            # anything extra if you want
 
 
@@ -54,4 +81,7 @@ class Resume(BaseModel):
     education: List[EducationEntry] = []
     experience: List[Experience] = []
     projects: List[Project] = []
+    volunteer_work: List[VolunteerWork] = []
+    awards: List[Award] = []
+    publications: List[Publication] = []
     additional_info: Optional[AdditionalInfo] = None
