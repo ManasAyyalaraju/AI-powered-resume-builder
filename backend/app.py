@@ -9,10 +9,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # Local development
-        "https://*.vercel.app",   # All Vercel deployments (preview & production)
+        "https://ai-powered-resume-builder-egn6vytdc-manas-s-projects-97f76173.vercel.app",  # Vercel production
         # Add your custom domain here when you set it up:
         # "https://your-custom-domain.com",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",  # All Vercel deployments (preview & production)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
