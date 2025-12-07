@@ -73,7 +73,8 @@ Make sure the field NAMES and TYPES are EXACTLY as specified:
       "major": "string (e.g., 'Computer Science', 'Business Administration') - REQUIRED if degree is present",
       "location": "string",
       "graduation_date": "string (format as 'Month YYYY' like 'December 2026', not 'YYYY-MM')",
-      "gpa": "string"
+      "gpa": "string",
+      "scholarships": "string (extract any scholarships, honors, or awards mentioned in the education section as a comma-separated string)"
     }}
   ],
 
@@ -93,6 +94,17 @@ Make sure the field NAMES and TYPES are EXACTLY as specified:
       "name": "string",
       "role": "string",
       "semester": "string (e.g. 'Fall 2025', 'Spring 2024', 'September 2025', 'Month YYYY' format. Extract ANY date or semester information from the project entry and put it here, NOT in the role field)",
+      "bullets": ["string", "string", ...]
+    }}
+  ],
+
+  "leadership": [
+    {{
+      "organization": "string",
+      "role": "string",
+      "location": "string",
+      "start_date": "string (format as 'Month YYYY')",
+      "end_date": "string (format as 'Month YYYY' or 'Present')",
       "bullets": ["string", "string", ...]
     }}
   ],
@@ -144,7 +156,7 @@ RULES:
 - Extract ONLY information that actually appears in the resume text.
 - Do NOT invent jobs, dates, companies, or skills.
 - If a field is missing, set it to an empty string, empty list, or empty object as appropriate.
-- **NAME EXTRACTION**: The "name" field should be extracted from the very top of the resume, typically the largest text at the beginning. Extract the full name exactly as it appears (e.g., "Aswath Manu", "SWATH ANU", etc.). Do NOT extract email addresses or other contact information as the name.
+- **NAME EXTRACTION**: The "name" field should be extracted from the very top of the resume, typically the largest text at the beginning. Extract the COMPLETE full name EXACTLY as it appears, including ALL letters. Do NOT truncate or skip any characters. If the name appears incomplete or garbled in the text extraction, check the email address for clues (e.g., if email is "Aswath.Manu@utdallas.edu", the name is likely "Aswath Manu" not "Swath Manu"). Examples of CORRECT extraction: "Aswath Manu", "John Smith", "Maria Garcia-Lopez".
 - "education" MUST be a list (it can have just 1 item, or empty list if no education section).
 - Each education entry MUST use the key "school", NOT "institution".
 - **EDUCATION PARSING**: Separate degree and major into two fields:
@@ -161,12 +173,24 @@ RULES:
 - "projects" is OPTIONAL - only include if the resume has a projects or extracurricular activities section. If no projects, use empty list [].
 - **PROJECT DATE/SEMESTER EXTRACTION**: For projects, extract ANY date or semester information (e.g., "Fall 2025", "Spring 2024", "September 2025", "December 2023", etc.) and put it in the "semester" field. Dates can be in "Month YYYY" format (like "September 2025") or semester format (like "Fall 2025"). 
 - **CRITICAL**: Do NOT include dates or semesters in the "role" field. The "role" field should only contain the role/title (e.g., "Officer/Education Lead"), and the date/semester should ALWAYS go in the "semester" field. If a project entry shows "Organization Name – Role – Date", extract the date separately into the "semester" field, not as part of the role.
+- **LEADERSHIP SECTION**: The "leadership" field should include content from sections labeled as:
+  * "LEADERSHIP" or "Leadership"
+  * "LEADERSHIP EXPERIENCE" or "Leadership Experience"
+  * "LEADERSHIP EXPERIENCE AND ACTIVITIES" or "Leadership Experience and Activities"
+  * "LEADERSHIP ACTIVITIES" or similar variations
+  * Any section that describes leadership roles in organizations, clubs, or groups
+  * Examples: President of a club, Founder of an organization, Officer positions, Committee leadership, etc.
+- "leadership" is OPTIONAL - only include if the resume has a dedicated leadership section. If no leadership section, use empty list [].
+- **LEADERSHIP vs VOLUNTEER WORK**: Distinguish between leadership roles and volunteer work:
+  * LEADERSHIP: Roles with titles like President, Founder, Officer, Director, Chair, Lead, etc. in organizations/clubs
+  * VOLUNTEER WORK: Actual volunteer service activities (food banks, community service, tutoring, charity work)
+  * If a position has both leadership and volunteer aspects, classify as "leadership" if it emphasizes a leadership role
 - **VOLUNTEER WORK CLASSIFICATION**: Only classify entries as "volunteer_work" if they are actual volunteer activities (e.g., volunteering at a food bank, community service, charity work). Do NOT classify the following as volunteer work:
   * Professional organizations or associations (e.g., "Financial Leadership Association", "IEEE", "ACM")
   * Student clubs or academic organizations (unless explicitly described as volunteer work)
   * Professional memberships - these should go in "additional_info.professional_memberships" instead
   * Extracurricular activities that are not explicitly volunteer work - these should go in "projects" instead
-- "volunteer_work", "awards", and "publications" are OPTIONAL - only include if present in the resume. Use empty lists [] if not present.
+- "volunteer_work", "awards", "publications", and "leadership" are OPTIONAL - only include if present in the resume. Use empty lists [] if not present.
 - SKILLS EXTRACTION: Extract ALL skills, tools, technologies, and competencies mentioned anywhere in the resume:
   * From dedicated skills sections (e.g., "Skills", "Technical Skills", "Computer Skills", "Core Competencies")
   * From experience bullet points (e.g., "Used Python and SQL to...")

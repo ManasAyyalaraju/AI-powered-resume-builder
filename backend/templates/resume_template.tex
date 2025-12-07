@@ -44,6 +44,15 @@
 
 \titlespacing*{\section}{0pt}{10pt}{2pt}
 
+% Dynamic spacing variables based on compact mode
+%{ if resume.compact_mode %}
+\newcommand{\entryvspace}{\vspace{1pt}}
+\newcommand{\sectionvspace}{\vspace{3pt}}
+%{ else %}
+\newcommand{\entryvspace}{\vspace{5pt}}
+\newcommand{\sectionvspace}{\vspace{5pt}}
+%{ endif %}
+
 % Custom commands
 \newcommand{\resumeHeader}[1]{
   \begin{center}
@@ -56,7 +65,7 @@
   \begin{center}
     #1
   \end{center}
-  \vspace{10pt}
+  \vspace{5pt}
 }
 
 \newcommand{\resumeSubheading}[4]{
@@ -83,6 +92,19 @@
   \vspace{1pt}
 }
 
+\newcommand{\resumeEducationSplit}[3]{
+  \noindent
+  \begin{minipage}[t]{0.7\textwidth}
+    \textbf{#1}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.25\textwidth}
+    \raggedleft #2
+  \end{minipage}
+  \par\noindent #3
+  \vspace{1pt}
+}
+
 \newcommand{\resumeProjectHeading}[3]{
   \noindent
   \begin{minipage}[t]{0.7\textwidth}
@@ -99,7 +121,7 @@
 
 % Name
 \resumeHeader{VAR{resume.name|escape_latex}}
-
+\vspace{-10pt}
 % Contact Information
 \resumeContact{
   %{ if resume.contact %}
@@ -130,11 +152,48 @@ VAR{resume.summary|escape_latex}
 %{ if resume.education %}
 \section*{EDUCATION}
 %{ for edu in resume.education %}
-\resumeEducation{VAR{edu.school|escape_latex} -- %{ if edu.major %}VAR{edu.major|escape_latex}, %{ endif %}VAR{edu.degree|escape_latex}}{%{ if edu.graduation_date %}VAR{edu.graduation_date|escape_latex}%{ endif %}}
+%# Always use two-line format: school + location on line 1, degree + major on line 2
+%{ set school_text = edu.school|escape_latex %}
+%{ set location_text = edu.location|escape_latex if edu.location else '' %}
+%{ set major_text = edu.major|escape_latex if edu.major else '' %}
+%{ set degree_text = edu.degree|escape_latex if edu.degree else '' %}
+%{ set date_text = edu.graduation_date|escape_latex if edu.graduation_date else '' %}
+
+%# Build first line: school + location (if available)
+%{ if location_text %}
+  %{ set first_line = school_text ~ ' -- ' ~ location_text %}
+%{ else %}
+  %{ set first_line = school_text %}
+%{ endif %}
+
+%# Build second line: degree + major
+%{ if major_text and degree_text %}
+  %{ set second_line = degree_text ~ ', ' ~ major_text %}
+%{ elif degree_text %}
+  %{ set second_line = degree_text %}
+%{ elif major_text %}
+  %{ set second_line = major_text %}
+%{ else %}
+  %{ set second_line = '' %}
+%{ endif %}
+
+%# Use split format only if there's a second line, otherwise use simple format
+%{ if second_line %}
+\resumeEducationSplit{VAR{first_line}}{VAR{date_text}}{VAR{second_line}}
+%{ else %}
+\resumeEducation{VAR{first_line}}{VAR{date_text}}
+%{ endif %}
+
+%{ if edu.scholarships %}
+\noindent Scholarships: VAR{edu.scholarships|escape_latex}
+%{ endif %}
+
 %{ if edu.gpa %}
 \noindent Overall GPA: VAR{edu.gpa|escape_latex}
 %{ endif %}
-\vspace{5pt}
+%{ if not loop.last %}
+\entryvspace
+%{ endif %}
 %{ endfor %}
 %{ endif %}
 
@@ -149,7 +208,7 @@ VAR{resume.summary|escape_latex}
   \item VAR{bullet|escape_latex}
 %{ endfor %}
 \end{itemize}
-\vspace{5pt}
+\entryvspace
 %{ endif %}
 %{ endfor %}
 %{ endif %}
@@ -165,9 +224,32 @@ VAR{resume.summary|escape_latex}
   \item VAR{bullet|escape_latex}
 %{ endfor %}
 \end{itemize}
-\vspace{5pt}
+\entryvspace
 %{ endif %}
 %{ endfor %}
+%{ endif %}
+
+% Leadership
+%# Only show Leadership as separate section if it's substantial
+%# Minor leadership (1 entry with 1 bullet) goes to Additional Info instead
+%{ if resume.leadership %}
+  %{ set is_minor_leadership = (resume.leadership|length == 1 and resume.leadership[0].bullets|length <= 1) %}
+  %{ if not is_minor_leadership %}
+\section*{LEADERSHIP}
+%{ for lead in resume.leadership %}
+\resumeSubheading{VAR{lead.organization|escape_latex}}{%{ if lead.role %}VAR{lead.role|escape_latex}%{ endif %}}{%{ if lead.start_date %}VAR{lead.start_date|escape_latex}%{ endif %}}{%{ if lead.end_date %}VAR{lead.end_date|escape_latex}%{ else %}Present%{ endif %}}
+%{ if lead.bullets %}
+\begin{itemize}
+%{ for bullet in lead.bullets %}
+  \item VAR{bullet|escape_latex}
+%{ endfor %}
+\end{itemize}
+%{ if not loop.last %}
+\entryvspace
+%{ endif %}
+%{ endif %}
+%{ endfor %}
+  %{ endif %}
 %{ endif %}
 
 % Volunteer Work
@@ -181,7 +263,7 @@ VAR{resume.summary|escape_latex}
   \item VAR{bullet|escape_latex}
 %{ endfor %}
 \end{itemize}
-\vspace{5pt}
+\entryvspace
 %{ endif %}
 %{ endfor %}
 %{ endif %}
@@ -201,7 +283,7 @@ VAR{resume.summary|escape_latex}
 %{ if award.description %}
 \par\noindent VAR{award.description|escape_latex}
 %{ endif %}
-\vspace{5pt}
+\entryvspace
 %{ endfor %}
 %{ endif %}
 
@@ -223,12 +305,12 @@ VAR{resume.summary|escape_latex}
 %{ if pub.url %}
 \par\noindent\href{VAR{pub.url|escape_latex}}{VAR{pub.url|escape_latex}}
 %{ endif %}
-\vspace{5pt}
+\entryvspace
 %{ endfor %}
 %{ endif %}
 
 % Additional Information
-%{ if resume.additional_info or resume.skills %}
+%{ if resume.additional_info or resume.skills or resume.leadership %}
 \section*{ADDITIONAL INFORMATION}
 
 %{ if resume.additional_info %}
@@ -252,6 +334,14 @@ VAR{resume.summary|escape_latex}
   %{ endif %}
   %{ if resume.additional_info.professional_memberships %}
 \par\noindent\textbf{Professional Memberships:} %{ for mem in resume.additional_info.professional_memberships %}VAR{mem|escape_latex}%{ if not loop.last %}, %{ endif %}%{ endfor %}
+  %{ endif %}
+  %# Add minor leadership here if it exists (1 entry with 1 bullet)
+  %{ if resume.leadership %}
+    %{ set is_minor_leadership = (resume.leadership|length == 1 and resume.leadership[0].bullets|length <= 1) %}
+    %{ if is_minor_leadership %}
+      %{ set lead = resume.leadership[0] %}
+\par\noindent\textbf{Leadership:} VAR{lead.organization|escape_latex}%{ if lead.role %} - VAR{lead.role|escape_latex}%{ endif %}%{ if lead.start_date %} (VAR{lead.start_date|escape_latex}%{ if lead.end_date %} - VAR{lead.end_date|escape_latex}%{ else %} - Present%{ endif %})%{ endif %}
+    %{ endif %}
   %{ endif %}
   %{ if resume.additional_info.work_eligibility %}
 \par\noindent\textbf{Work Eligibility:} VAR{resume.additional_info.work_eligibility|escape_latex}

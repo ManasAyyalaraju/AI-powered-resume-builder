@@ -26,6 +26,12 @@ def estimate_resume_fullness(resume: Resume) -> int:
         for proj in resume.projects:
             score += len(proj.bullets)
     
+    # Count leadership entries and bullets
+    if resume.leadership:
+        score += len(resume.leadership) * 2  # Each leadership entry counts as 2
+        for lead in resume.leadership:
+            score += len(lead.bullets)
+    
     # Count education entries
     if resume.education:
         score += len(resume.education) * 2  # Each education entry counts as 2
@@ -52,21 +58,44 @@ def estimate_resume_fullness(resume: Resume) -> int:
 def conditionally_remove_headline_summary(resume: Resume) -> Resume:
     """
     Remove headline and summary sections if the resume is too full to fit on one page.
+    ADD headline and summary if the resume is sparse and needs more content.
     
     Threshold guideline:
-    - Score < 30: Resume has room for headline/summary
-    - Score >= 30: Resume is full, remove headline/summary to stay within 1 page
+    - Score < 35: Resume is sparse, KEEP or ADD headline/summary to fill space
+    - Score >= 35: Resume is full, REMOVE headline/summary to save space
     """
-    FULLNESS_THRESHOLD = 30
+    FULLNESS_THRESHOLD = 35  # Raised from 30
     
     fullness_score = estimate_resume_fullness(resume)
     
-    if fullness_score >= FULLNESS_THRESHOLD:
-        # Resume is too full - remove headline and summary
+    # Additional checks for sparseness
+    has_work_experience = len(resume.experience) > 0
+    total_bullets = (
+        sum(len(exp.bullets) for exp in resume.experience) +
+        sum(len(proj.bullets) for proj in resume.projects) +
+        sum(len(lead.bullets) for lead in resume.leadership) +
+        sum(len(vol.bullets) for vol in resume.volunteer_work)
+    )
+    
+    # Resume is SPARSE if:
+    # - No work experience, OR
+    # - Few bullets (< 15), OR
+    # - Low fullness score (< 35)
+    is_sparse = (
+        not has_work_experience or
+        total_bullets < 15 or
+        fullness_score < FULLNESS_THRESHOLD
+    )
+    
+    if is_sparse:
+        # Resume is sparse - KEEP headline/summary to fill space
+        # Don't remove even if they exist
+        pass  # Keep as is
+    else:
+        # Resume is full - REMOVE headline/summary to save space
         resume.headline = None
         resume.summary = None
     
-    # Otherwise, keep headline and summary as is
     return resume
 
 
@@ -122,11 +151,67 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
     2. Ask LLM to rewrite summary + bullets.
     3. Enforce:
        - company, title, dates, location stay EXACTLY the same
-       - number of bullets per experience/project stays the same
+       - number of bullets per experience/project/leadership stays the same
+    4. Set compact_mode based on resume fullness
     """
-    # Keep original experience & project structures for safety
+    # Calculate resume fullness to determine compact mode
+    fullness_score = estimate_resume_fullness(resume)
+    
+    # Count total bullets for density analysis
+    total_bullets = 0
+    for exp in resume.experience:
+        total_bullets += len(exp.bullets)
+    for proj in resume.projects:
+        total_bullets += len(proj.bullets)
+    for lead in resume.leadership:
+        total_bullets += len(lead.bullets)
+    for vol in resume.volunteer_work:
+        total_bullets += len(vol.bullets)
+    
+    # Count sections
+    num_sections = sum([
+        1 if resume.experience else 0,
+        1 if resume.projects else 0,
+        1 if resume.leadership else 0,
+        1 if resume.education else 0,
+        1 if resume.volunteer_work else 0,
+        1 if resume.awards else 0,
+        1 if resume.publications else 0
+    ])
+    
+    # Calculate average bullet length
+    all_bullets = []
+    for exp in resume.experience:
+        all_bullets.extend(exp.bullets)
+    for proj in resume.projects:
+        all_bullets.extend(proj.bullets)
+    for lead in resume.leadership:
+        all_bullets.extend(lead.bullets)
+    for vol in resume.volunteer_work:
+        all_bullets.extend(vol.bullets)
+    
+    avg_bullet_length = sum(len(b) for b in all_bullets) / len(all_bullets) if all_bullets else 150
+    
+    # Check critical indicators
+    has_work_experience = len(resume.experience) > 0
+    has_headline = resume.headline not in [None, ""]
+    has_summary = resume.summary not in [None, ""]
+    
+    # Set compact mode for SPACING using RELAXED criteria
+    # Use minimal spacing if resume has substantial content, regardless of bullet length
+    # This ensures "Full but Verbose" resumes (like Aswath) get minimal spacing
+    resume.compact_mode = (
+        has_work_experience and              # Must have work experience
+        total_bullets >= 15 and              # At least 15 bullets
+        fullness_score >= 35                 # High fullness score
+        # NOTE: Don't check avg_bullet_length here - that's for LLM only
+        # Even if bullets are long/verbose, use minimal spacing to save space
+    )
+    
+    # Keep original experience, project, and leadership structures for safety
     original_experience = [exp.model_copy(deep=True) for exp in resume.experience]
     original_projects = [proj.model_copy(deep=True) for proj in resume.projects]
+    original_leadership = [lead.model_copy(deep=True) for lead in resume.leadership]
 
     # Step 1: rule-based skills adjustment
     resume = reorder_skills(resume, jd)
@@ -144,6 +229,9 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
         return resume
 
     rewritten_resume = Resume.model_validate(rewritten_data)
+    
+    # Preserve compact_mode setting
+    rewritten_resume.compact_mode = resume.compact_mode
 
     # Step 3a: lock experience metadata and bullet counts
     locked_experience = []
@@ -186,6 +274,30 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
         locked_projects.append(rewritten)
 
     rewritten_resume.projects = locked_projects
+
+    # Step 3c: enforce same bullet count for leadership
+    locked_leadership = []
+    for original, rewritten in zip(original_leadership, rewritten_resume.leadership):
+        # Lock non-editable fields
+        rewritten.organization = original.organization
+        rewritten.role = original.role
+        rewritten.start_date = original.start_date
+        rewritten.end_date = original.end_date
+        rewritten.location = original.location
+
+        # Enforce same number of bullets
+        orig_bullets = original.bullets
+        new_bullets = rewritten.bullets or []
+
+        if len(new_bullets) < len(orig_bullets):
+            new_bullets = new_bullets + orig_bullets[len(new_bullets):]
+        elif len(new_bullets) > len(orig_bullets):
+            new_bullets = new_bullets[: len(orig_bullets)]
+
+        rewritten.bullets = new_bullets
+        locked_leadership.append(rewritten)
+
+    rewritten_resume.leadership = locked_leadership
 
     # Step 4: Format skills (tools stay as is, concept phrases get title case)
     rewritten_resume.skills = format_skills_list(rewritten_resume.skills)

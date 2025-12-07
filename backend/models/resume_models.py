@@ -16,6 +16,7 @@ class EducationEntry(BaseModel):
     graduation_date: Optional[str] = None  # e.g. "May 2026"
     gpa: Optional[str] = None              # e.g. "3.8/4.0"
     location: Optional[str] = None
+    scholarships: Optional[str] = None     # e.g. "Academic Excellence Scholarship, Carlton J Siegler Scholarship"
 
 
 class Experience(BaseModel):
@@ -35,6 +36,15 @@ class Project(BaseModel):
 
 
 class VolunteerWork(BaseModel):
+    organization: str
+    role: Optional[str] = None
+    location: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    bullets: List[str] = []
+
+
+class Leadership(BaseModel):
     organization: str
     role: Optional[str] = None
     location: Optional[str] = None
@@ -75,13 +85,17 @@ class Resume(BaseModel):
     summary: Optional[str] = None
 
     # Internal skills list – this powers tailoring.
-    # On the final resume, we’ll show these under "Computer Skills" in Additional Info.
+    # On the final resume, we'll show these under "Computer Skills" in Additional Info.
     skills: List[str] = []
 
     education: List[EducationEntry] = []
     experience: List[Experience] = []
     projects: List[Project] = []
+    leadership: List[Leadership] = []
     volunteer_work: List[VolunteerWork] = []
     awards: List[Award] = []
     publications: List[Publication] = []
     additional_info: Optional[AdditionalInfo] = None
+    
+    # Formatting control
+    compact_mode: bool = False  # If True, use minimal spacing to fit on one page
