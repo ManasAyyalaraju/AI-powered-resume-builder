@@ -100,7 +100,7 @@ export default function TailorPage() {
             <div className="bg-white rounded-xl shadow-lg p-12">
               <LoadingSpinner 
                 message="Tailoring your resume..."
-                submessage="This may take 10-30 seconds. Please wait."
+                submessage="This may take 1-3 minutes. Please wait."
               />
             </div>
           ) : error ? (
@@ -186,7 +186,7 @@ export default function TailorPage() {
                   <li>• Use a well-formatted PDF resume with clear sections</li>
                   <li>• Include the complete job description with requirements and responsibilities</li>
                   <li>• The more detailed the job description, the better the tailoring</li>
-                  <li>• Processing typically takes 10-30 seconds depending on resume length</li>
+                  <li>• Processing typically takes 1-3 minutes depending on resume length</li>
                 </ul>
               </div>
             </>
