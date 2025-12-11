@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Auto Resume Tailor - AI-Powered Resume Customization",
+  title: "JobCraft - AI-Powered Resume Customization",
   description: "Transform your resume for every job in seconds with AI-powered tailoring. Upload your resume, paste a job description, and get a perfectly customized resume instantly.",
 };
 

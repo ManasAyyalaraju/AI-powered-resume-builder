@@ -1,18 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { Target } from 'lucide-react';
 
 export default function Header() {
   return (
     <header className="border-b border-gray-200 bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Target className="w-8 h-8 text-cyan-500" />
-            <span className="text-xl font-bold text-gray-800">
-              Auto Resume Tailor
-            </span>
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <span className="text-xl font-bold text-gray-800">JobCraft</span>
           </Link>
           
           <nav className="flex items-center gap-6">
@@ -36,4 +32,3 @@ export default function Header() {
     </header>
   );
 }
-

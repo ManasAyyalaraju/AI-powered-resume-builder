@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import tailor_routes
+from routers import tailor_routes, reformat_routes
 
 app = FastAPI(title="Auto Resume Tailor")
 
@@ -19,8 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register router
+# Register routers
 app.include_router(tailor_routes.router, prefix="/api")
+app.include_router(reformat_routes.router, prefix="/api")
 
 @app.get("/")
 def root():

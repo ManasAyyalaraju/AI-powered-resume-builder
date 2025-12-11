@@ -55,15 +55,32 @@ env/
 # IDE - Jupyter Notebook
 .ipynb_checkpoints
 
-# OS
+# OS - macOS
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
+.AppleDouble
+.LSOverride
+
+# OS - Windows
 ehthumbs.db
 Thumbs.db
 desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# OS - Linux
+*~
+.directory
+.Trash-*
+.nfs*
 
 # Project specific - Personal data
 data/my_resume.json

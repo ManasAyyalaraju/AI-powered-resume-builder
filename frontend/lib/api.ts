@@ -23,6 +23,16 @@ export interface TailorResumeResponse {
   error?: string;
 }
 
+export interface ReformatResumeParams {
+  pdfFile: File;
+}
+
+export interface ReformatResumeResponse {
+  data: Blob;
+  success: boolean;
+  error?: string;
+}
+
 /**
  * Tailor a resume based on a job description
  */
@@ -56,6 +66,34 @@ export async function tailorResume({
 }
 
 /**
+ * Reformat a resume into an ATS-friendly PDF without tailoring to a job description
+ */
+export async function reformatResume({
+  pdfFile,
+}: ReformatResumeParams): Promise<ReformatResumeResponse> {
+  try {
+    const formData = new FormData();
+    formData.append('pdf', pdfFile);
+
+    const response = await apiClient.post('/api/reformat/pdf', formData, {
+      responseType: 'blob',
+    });
+
+    return {
+      data: response.data,
+      success: true,
+    };
+  } catch (error) {
+    console.error('Error reformatting resume:', error);
+    return {
+      data: new Blob(),
+      success: false,
+      error: error instanceof Error ? error.message : 'An error occurred',
+    };
+  }
+}
+
+/**
  * Download a PDF blob as a file
  */
 export function downloadPDF(blob: Blob, filename: string = 'tailored_resume.pdf') {
@@ -81,4 +119,3 @@ export async function checkHealth(): Promise<boolean> {
     return false;
   }
 }
-

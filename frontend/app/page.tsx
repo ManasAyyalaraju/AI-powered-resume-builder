@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Target, Upload, Sparkles, Download, Shield, Zap, FileText } from 'lucide-react';
+import { Upload, Sparkles, Download, Shield, Zap, FileText, Target } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -17,17 +17,17 @@ export default function Home() {
             <div className="text-center">
               <div className="inline-flex items-center gap-2 bg-cyan-100 text-cyan-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
                 <Sparkles className="w-4 h-4" />
-                AI-Powered Resume Tailoring
+                AI-Powered Resume Tailoring & Reformatting
               </div>
               
               <h1 className="text-5xl md:text-6xl font-bold text-gray-800 mb-6">
-                Transform Your Resume for
-                <span className="text-cyan-600"> Every Job</span>
+                Tailor or Reformat Your Resume for
+                <span className="text-cyan-600"> Every Application</span>
               </h1>
               
               <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-                Upload your resume, paste a job description, and get a perfectly tailored resume in seconds. 
-                Our AI analyzes job requirements and optimizes your resume to match.
+                Upload your resume, choose to tailor it with a job description or instantly reformat it into an ATS-friendly PDF. 
+                Our AI handles the heavy lifting to make you stand out.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -35,8 +35,7 @@ export default function Home() {
                   href="/tailor"
                   className="inline-flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold px-8 py-4 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
                 >
-                  <Target className="w-5 h-5" />
-                  Get Started Free
+                  Try For Free
                 </Link>
                 
                 <a
@@ -60,7 +59,7 @@ export default function Home() {
                 How It Works
               </h2>
               <p className="text-lg text-gray-600">
-                Three simple steps to your perfect resume
+                Three simple steps to your tailored or reformatted resume
               </p>
             </div>
 
@@ -82,10 +81,10 @@ export default function Home() {
                   <FileText className="w-8 h-8 text-purple-600" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                  2. Paste Job Description
+                  2. Choose Tailor or Reformat
                 </h3>
                 <p className="text-gray-600">
-                  Copy and paste the job description. Our AI analyzes requirements and keywords.
+                  Paste a job description for tailoring, or skip straight to ATS reformatting.
                 </p>
               </div>
 
@@ -94,10 +93,10 @@ export default function Home() {
                   <Download className="w-8 h-8 text-green-600" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                  3. Download Tailored Resume
+                  3. Download Your PDF
                 </h3>
                 <p className="text-gray-600">
-                  Get your perfectly tailored resume as a professional PDF, ready to submit.
+                  Download a tailored or ATS-friendly PDF, ready to submit.
                 </p>
               </div>
             </div>
@@ -170,10 +169,10 @@ export default function Home() {
               <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
                 <Download className="w-10 h-10 text-pink-500 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Multiple Formats
+                  ATS-Friendly Formatting
                 </h3>
                 <p className="text-gray-600">
-                  Export as PDF or JSON for maximum flexibility and compatibility.
+                  Ensure your resume meets ATS standards with clean, optimized formatting.
                 </p>
               </div>
             </div>
@@ -190,12 +189,11 @@ export default function Home() {
               Start tailoring your resume now and increase your chances of getting interviews.
             </p>
             <Link
-              href="/tailor"
-              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-cyan-600 font-semibold px-8 py-4 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-            >
-              <Target className="w-5 h-5" />
-              Get Started Now
-            </Link>
+                  href="/tailor"
+                  className="inline-flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold px-8 py-4 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                >
+                  Get Started Now
+                </Link>
           </div>
         </section>
       </main>

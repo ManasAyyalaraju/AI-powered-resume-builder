@@ -24,9 +24,10 @@ COPY . .
 # Expose port 8000 (Render will use the PORT environment variable)
 EXPOSE 8000
 
-# Health check
+# Health check - uses standard library urllib (no external dependencies)
+# Render sets PORT env var, but we default to 8000 for healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
+    CMD python -c "import os, urllib.request; port = os.environ.get('PORT', '8000'); urllib.request.urlopen(f'http://localhost:{port}/health').read()" || exit 1
 
 # Run the application
 # Render will set the PORT environment variable

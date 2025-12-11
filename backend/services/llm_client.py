@@ -4,7 +4,14 @@ from core.config import settings
 from services.domain_detector import detect_domain
 from services.domain_prompts import get_domain_prompt
 
-client = OpenAI(api_key=settings.openai_api_key)
+# Validate API key on import
+try:
+    settings.validate_api_key()
+except ValueError as e:
+    import warnings
+    warnings.warn(str(e), UserWarning)
+
+client = OpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
 
 # Simple in-memory cache for domain detection (to avoid duplicate API calls)
 _domain_cache = {}
@@ -241,3 +248,50 @@ JOB DESCRIPTION JSON:
 
     content = response.choices[0].message.content
     return content
+
+
+def generate_headline_summary(resume_json: dict) -> dict:
+    """
+    Generate ONLY a headline and summary from existing resume content.
+    - No JD context
+    - Do NOT alter bullets or any other fields
+    - Keep it concise and truthful to provided data
+    """
+    if not client:
+        return {"headline": None, "summary": None}
+
+    system_message = (
+        "You are a resume editor. Only produce a short headline and 2-3 sentence "
+        "summary using existing resume details. Do not invent facts. Do not rewrite "
+        "bullets or any other fields. Keep it concise and professional."
+    )
+
+    prompt = f"""
+Resume JSON (truth source):
+{json.dumps(resume_json, indent=2)}
+
+Instructions:
+- Only output JSON with keys: headline, summary
+- Use ONLY information present above (roles, education, skills, bullets)
+- No new achievements or skills; do not change wording of bullets
+- Keep headline 50-80 characters; summary 2-3 sentences, ~120-220 chars total
+- If information is insufficient, return null for that field
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+        )
+        content = response.choices[0].message.content
+        data = json.loads(content)
+        return {
+            "headline": data.get("headline") or None,
+            "summary": data.get("summary") or None,
+        }
+    except Exception:
+        return {"headline": None, "summary": None}
