@@ -58,7 +58,7 @@ export async function tailorResume({
   } catch (error) {
     console.error('Error tailoring resume:', error);
     return {
-      data: {} as Resume,
+      data: {} as TailoredResult,
       success: false,
       error: error instanceof Error ? error.message : 'An error occurred',
     };
