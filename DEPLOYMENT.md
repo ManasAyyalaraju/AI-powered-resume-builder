@@ -22,6 +22,7 @@ Before deploying, ensure you have:
 ## 🚀 Backend Deployment (Render.com)
 
 ### Why Render?
+
 - Native Docker support (required for LaTeX)
 - Generous free tier
 - Auto-deployment from GitHub
@@ -30,6 +31,7 @@ Before deploying, ensure you have:
 ### Step 1: Prepare Your Repository
 
 Ensure these files exist in your repository:
+
 - `backend/Dockerfile` ✅
 - `backend/requirements.txt` ✅
 - `render.yaml` (optional, for infrastructure as code) ✅
@@ -37,15 +39,18 @@ Ensure these files exist in your repository:
 ### Step 2: Create Web Service on Render
 
 1. **Sign in to Render**
+
    - Go to [render.com](https://render.com)
    - Sign up/in with GitHub
 
 2. **Create New Web Service**
+
    - Click "New +" → "Web Service"
    - Connect your GitHub repository
    - Select your repository
 
 3. **Configure Service Settings**
+
    ```
    Name: auto-resume-backend
    Region: Oregon (US West) or closest to users
@@ -57,8 +62,9 @@ Ensure these files exist in your repository:
    ```
 
 4. **Add Environment Variables**
-   
+
    Go to "Environment" section and add:
+
    ```
    Key: OPENAI_API_KEY
    Value: [your-actual-openai-api-key]
@@ -103,6 +109,7 @@ The `render.yaml` file in the repository root allows automated deployment:
 ## 🌐 Frontend Deployment (Vercel)
 
 ### Why Vercel?
+
 - Optimized for Next.js (creator of Next.js)
 - Global CDN and edge network
 - Automatic HTTPS and SSL
@@ -124,15 +131,18 @@ Ensure `frontend/vercel.json` exists:
 ### Step 2: Deploy to Vercel
 
 1. **Sign in to Vercel**
+
    - Go to [vercel.com](https://vercel.com)
    - Sign up/in with GitHub
 
 2. **Import Project**
+
    - Click "Add New..." → "Project"
    - Import your GitHub repository
    - Vercel auto-detects Next.js
 
 3. **Configure Project Settings**
+
    ```
    Framework Preset: Next.js (auto-detected)
    Root Directory: frontend
@@ -143,14 +153,15 @@ Ensure `frontend/vercel.json` exists:
    ```
 
 4. **Add Environment Variable**
-   
+
    In "Environment Variables" section, add:
+
    ```
    Name: NEXT_PUBLIC_API_URL
    Value: https://your-backend-url.onrender.com
    Environments: ✅ Production, ✅ Preview, ✅ Development
    ```
-   
+
    **Important**: Replace with your actual Render backend URL (no trailing slash)
 
 5. **Deploy**
@@ -199,25 +210,29 @@ app.add_middleware(
 ### Check Logs
 
 **Backend (Render):**
+
 - Dashboard → Your Service → Logs
 - Monitor for errors or warnings
 
 **Frontend (Vercel):**
+
 - Dashboard → Your Project → Deployments → [Latest] → View Function Logs
 - Check for build errors or runtime issues
 
 ## 🔐 Environment Variables Summary
 
 ### Backend Environment Variables (Render)
-| Variable | Value | Required |
-|----------|-------|----------|
-| `OPENAI_API_KEY` | Your OpenAI API key | ✅ Yes |
-| `PORT` | 8000 (auto-set by Render) | Auto |
+
+| Variable         | Value                     | Required |
+| ---------------- | ------------------------- | -------- |
+| `OPENAI_API_KEY` | Your OpenAI API key       | ✅ Yes   |
+| `PORT`           | 8000 (auto-set by Render) | Auto     |
 
 ### Frontend Environment Variables (Vercel)
-| Variable | Value | Required |
-|----------|-------|----------|
-| `NEXT_PUBLIC_API_URL` | Your Render backend URL | ✅ Yes |
+
+| Variable              | Value                   | Required |
+| --------------------- | ----------------------- | -------- |
+| `NEXT_PUBLIC_API_URL` | Your Render backend URL | ✅ Yes   |
 
 ## 🎯 Custom Domain Setup (Optional)
 
@@ -247,21 +262,25 @@ app.add_middleware(
 ### Backend Issues
 
 **"LaTeX compilation failed"**
+
 - Check Render logs for specific LaTeX errors
 - Verify Dockerfile includes all LaTeX packages
 - Test locally with Docker: `docker build -t test-backend ./backend`
 
 **"OpenAI API error"**
+
 - Verify `OPENAI_API_KEY` is set correctly in Render dashboard
 - Check OpenAI account has credits/billing enabled
 - Test key locally: `curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"`
 
 **"Service not responding"**
+
 - Check health endpoint: `/health`
 - Review Render logs for errors
 - Verify service is deployed and running
 
 **"Slow first request"**
+
 - Normal on free tier (service sleeps)
 - Upgrade to Starter plan for always-on service
 - Consider implementing keep-alive ping
@@ -269,18 +288,21 @@ app.add_middleware(
 ### Frontend Issues
 
 **"Failed to fetch backend API"**
+
 - Verify `NEXT_PUBLIC_API_URL` is set correctly
 - Check backend is deployed and accessible
 - Test backend URL directly in browser
 - Check browser console for CORS errors
 
 **"CORS error"**
+
 - Verify Vercel URL is in backend's `allow_origins`
 - Commit and push backend changes
 - Wait for Render auto-deployment
 - Clear browser cache
 
 **"Build failed"**
+
 - Check Vercel build logs for errors
 - Test build locally: `cd frontend && npm run build`
 - Verify all dependencies in `package.json`
@@ -289,14 +311,17 @@ app.add_middleware(
 ### Common Deployment Errors
 
 **Render: "Dockerfile not found"**
+
 - Set "Root Directory" to `backend`
 - Set "Dockerfile Path" to `./Dockerfile`
 
 **Vercel: "Module not found"**
+
 - Verify all imports use correct paths
 - Check that dependencies are in `package.json`, not `devDependencies`
 
 **Both: "Environment variable not set"**
+
 - Double-check variable names (case-sensitive)
 - Redeploy after setting environment variables
 - Use `.env.example` files as reference
@@ -304,30 +329,34 @@ app.add_middleware(
 ## 📊 Monitoring & Performance
 
 ### Render Monitoring
+
 - Dashboard shows CPU, memory, and request metrics
 - Set up email alerts for service downtime
 - Monitor OpenAI API usage and costs
 
 ### Vercel Analytics (Optional)
+
 - Enable Vercel Analytics in project settings
 - Track page views, performance, and user behavior
 - Free tier includes basic analytics
 
 ### Recommended Monitoring
+
 - Set up uptime monitoring (e.g., UptimeRobot, Pingdom)
 - Monitor OpenAI API usage in OpenAI dashboard
 - Track error rates in application logs
 
 ## 💰 Cost Estimation
 
-| Service | Free Tier | Paid Option | Recommendation |
-|---------|-----------|-------------|----------------|
-| Render Backend | ✅ Free (with sleep) | $7/mo (always-on) | Start free, upgrade if needed |
-| Vercel Frontend | ✅ Generous free tier | $20/mo Pro | Free tier is sufficient |
-| OpenAI API | Pay-per-use | $5-50/mo typical | Monitor usage |
-| **Total** | **~$5-10/mo** | **~$27-77/mo** | Start with ~$10/mo |
+| Service         | Free Tier             | Paid Option       | Recommendation                |
+| --------------- | --------------------- | ----------------- | ----------------------------- |
+| Render Backend  | ✅ Free (with sleep)  | $7/mo (always-on) | Start free, upgrade if needed |
+| Vercel Frontend | ✅ Generous free tier | $20/mo Pro        | Free tier is sufficient       |
+| OpenAI API      | Pay-per-use           | $5-50/mo typical  | Monitor usage                 |
+| **Total**       | **~$5-10/mo**         | **~$27-77/mo**    | Start with ~$10/mo            |
 
 ### Typical OpenAI Costs
+
 - Resume tailoring: ~$0.05-0.15 per request
 - 100 requests/month: ~$5-15
 - Use GPT-3.5-turbo for lower costs (optional)
@@ -337,16 +366,41 @@ app.add_middleware(
 Both platforms support automatic deployment:
 
 **Automatic Triggers:**
+
 - Push to `master` branch → Deploy to production
 - Pull requests → Vercel creates preview deployments
 - Manual deploys available in both dashboards
 
+**Smart Deployment Behavior:**
+
+Since your Render service is configured with `Root Directory: backend`, Render will **only rebuild the backend** when files in the `backend/` directory change:
+
+✅ **Backend rebuilds when:**
+
+- Files in `backend/` directory are modified
+- `backend/Dockerfile` or `backend/requirements.txt` change
+- Any Python files in `backend/` are updated
+
+❌ **Backend does NOT rebuild when:**
+
+- Only `frontend/` files are changed
+- Only root-level files (README, .gitignore, etc.) are modified
+- Only documentation files are updated
+
+**Note:** Changes to `render.yaml` at the root may still trigger a rebuild, as Render monitors this file for infrastructure changes.
+
 **Deployment Workflow:**
+
 1. Make changes locally and test
 2. Commit and push to GitHub
-3. Render auto-deploys backend (3-5 minutes)
-4. Vercel auto-deploys frontend (2-3 minutes)
+3. Render auto-deploys backend **only if backend files changed** (3-5 minutes)
+4. Vercel auto-deploys frontend **only if frontend files changed** (2-3 minutes)
 5. Verify changes in production
+
+**Verifying Smart Deploys:**
+
+- Check Render dashboard → Deployments to see which commits triggered builds
+- Render logs will show "No changes detected" or skip deployment if no relevant files changed
 
 ## 🔒 Security Best Practices
 
@@ -373,11 +427,13 @@ Both platforms support automatic deployment:
 ### When to Scale
 
 **Backend (Render):**
+
 - Consistent traffic → Upgrade to Starter ($7/mo) to eliminate sleep
 - High traffic → Upgrade to Standard ($25/mo) for more resources
 - Very high traffic → Consider multiple instances or different platform
 
 **Frontend (Vercel):**
+
 - Free tier handles significant traffic
 - Upgrade to Pro only if you need advanced features
 
@@ -452,6 +508,7 @@ Verify these after deployment:
 **Congratulations!** 🎉 Your AI-Powered Resume Tailor is now deployed and ready for users!
 
 **Next Steps:**
+
 - Share your application URL
 - Monitor usage and performance
 - Gather user feedback

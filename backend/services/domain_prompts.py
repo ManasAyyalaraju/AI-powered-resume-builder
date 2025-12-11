@@ -194,7 +194,7 @@ DOMAIN_PROMPTS = {
             "skill_priorities": {
                 "high": ["Financial analysis", "Credit risk", "Regulatory knowledge", "CRM systems"],
                 "medium": ["Excel", "Financial modeling", "SQL"],
-                "low": ["Programming languages (unless relevant)", "Design tools"]
+                "low": ["Progra)mming languages (unless relevant", "Design tools"]
             },
             "terminology": [
                 "underwriting", "credit analysis", "loan origination",

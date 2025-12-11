@@ -58,9 +58,38 @@ export interface Resume {
 
 export interface TailorResponse {
   resume: Resume;
+  job_description?: JobDescription;
+  compatibility?: CompatibilityReport;
   matchScore?: number;
   skillsMatched?: number;
   totalSkills?: number;
   keywordsAdded?: number;
+}
+
+export interface JobDescription {
+  title?: string;
+  company?: string;
+  must_have_skills: string[];
+  nice_to_have_skills: string[];
+  responsibilities: string[];
+  keywords: string[];
+  raw_text: string;
+}
+
+export interface CompatibilityReport {
+  score: number;
+  must_coverage: number;
+  nice_coverage: number;
+  matched_must_have: string[];
+  matched_nice_to_have: string[];
+  missing_must_have: string[];
+  missing_nice_to_have: string[];
+  resume_skill_hits: string[];
+}
+
+export interface TailoredResult {
+  resume: Resume;
+  job_description?: JobDescription;
+  compatibility?: CompatibilityReport;
 }
 

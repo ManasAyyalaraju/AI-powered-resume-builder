@@ -1,6 +1,46 @@
 import json
+import re
+from typing import List
 from models.job_models import JobDescription
 from services.llm_client import client
+
+
+NON_SKILL_PATTERNS = [
+    r"\b\d+\s*(\+)?\s*(years|year|yrs)\b",
+    r"\bexperience\b",
+    r"\bdegree\b",
+    r"\bbachelor",
+    r"\bmaster",
+    r"\bph\.?d",
+    r"\bself[-\s]?starter\b",
+    r"\bmotivated\b",
+    r"\bability to\b",
+    r"\bstrong\b",
+    r"\bcustomer service\b",
+    r"\bcommunication\b",
+    r"\binteract with vendors\b",
+    r"\borganized\b",
+]
+
+
+def _filter_concrete_skills(skills: List[str]) -> List[str]:
+    filtered: List[str] = []
+    seen = set()
+
+    for skill in skills:
+        cleaned = skill.strip()
+        if not cleaned:
+            continue
+
+        lowered = cleaned.lower()
+        if any(re.search(pattern, lowered, re.IGNORECASE) for pattern in NON_SKILL_PATTERNS):
+            continue
+
+        if lowered not in seen:
+            filtered.append(cleaned)
+            seen.add(lowered)
+
+    return filtered
 
 
 def parse_job_description_from_text(text: str) -> JobDescription:
@@ -19,8 +59,8 @@ Convert the following job description text into a JSON object with this structur
   "location": "string",         // location if present, else ""
   "employment_type": "string",  // e.g. Internship, Full-time, etc. or ""
   "raw_text": "string",         // full original JD text
-  "must_have_skills": ["string", "string", ...],  // required/critical skills
-  "nice_to_have_skills": ["string", "string", ...],  // preferred but not required skills
+  "must_have_skills": ["string", "string", ...],  // required/critical skills (concrete tools, software, certifications, or methodologies only)
+  "nice_to_have_skills": ["string", "string", ...],  // preferred but not required skills (concrete only)
   "keywords": ["string", "string", ...],  // important keywords for ATS matching
   "responsibilities": ["string", "string", ...]  // key responsibilities (optional)
 }}
@@ -28,10 +68,11 @@ Convert the following job description text into a JSON object with this structur
 Rules:
 - Extract ONLY what appears in the text.
 - If a field is missing, use an empty string "" or empty list [].
-- "must_have_skills": Skills explicitly stated as required, essential, or mandatory
-- "nice_to_have_skills": Skills mentioned as preferred, bonus, or advantageous
-- "keywords": Important industry terms, methodologies, or concepts for ATS matching
-- Extract skills from ANY domain (tech, healthcare, finance, marketing, etc.)
+- "must_have_skills": Concrete tools/software/platforms/certifications/methodologies explicitly stated as required.
+- "nice_to_have_skills": Same kind of concrete skills that are preferred/bonus.
+- Do NOT classify education requirements, years of experience, tenure, personality traits (self-starter, motivated, organized), or generic ability/communication/customer-service/vendor interaction statements as skills. Those may remain as keywords/responsibilities if present.
+- "keywords": Important industry terms, methodologies, or concepts for ATS matching.
+- Extract skills from ANY domain (tech, healthcare, finance, marketing, etc.) but keep them concrete.
 - Return ONLY valid JSON. Do NOT wrap it in markdown or backticks.
 
 JOB DESCRIPTION TEXT:
@@ -63,6 +104,9 @@ JOB DESCRIPTION TEXT:
             "JD parser: LLM did not return valid JSON. First 500 chars:\n"
             + raw[:500]
         ) from e
+
+    parsed["must_have_skills"] = _filter_concrete_skills(parsed.get("must_have_skills", []))
+    parsed["nice_to_have_skills"] = _filter_concrete_skills(parsed.get("nice_to_have_skills", []))
 
     # Validate against the JobDescription model
     jd_obj = JobDescription.model_validate(parsed)

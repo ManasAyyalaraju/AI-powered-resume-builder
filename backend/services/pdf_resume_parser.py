@@ -6,6 +6,53 @@ from models.resume_models import Resume
 from services.llm_client import client
 
 
+ENRICHMENT_PATTERNS = {
+    "next.js": r"\bnext\.?js\b",
+    "typescript": r"\btypescript\b",
+    "javascript": r"\bjavascript\b",
+    "html5": r"\bhtml5\b",
+    "css": r"\bcss\b",
+    "react": r"\breact\b",
+    "node.js": r"\bnode\.?js\b",
+    "python": r"\bpython\b",
+    "sql": r"\bsql\b",
+    "postgresql": r"\bpostgresql\b|\bpostgres\b",
+    "mysql": r"\bmysql\b",
+    "jira": r"\bjira\b",
+    "tableau": r"\btableau\b",
+    "power bi": r"\bpower\s*bi\b",
+    "excel": r"\bexcel\b",
+    "loRa": r"\blora\b",
+}
+
+
+def _merge_and_dedupe_skills(existing: list[str], new_items: list[str]) -> list[str]:
+    merged: list[str] = []
+    seen = set()
+    for item in [*(existing or []), *(new_items or [])]:
+        clean = item.strip()
+        if not clean:
+            continue
+        key = clean.lower()
+        if key not in seen:
+            seen.add(key)
+            merged.append(clean)
+    return merged
+
+
+def _enrich_skills_from_text(raw_text: str, current_skills: list[str]) -> list[str]:
+    if not raw_text:
+        return current_skills
+
+    found = []
+    lower_text = raw_text.lower()
+    for canonical, pattern in ENRICHMENT_PATTERNS.items():
+        if re.search(pattern, lower_text, re.IGNORECASE):
+            found.append(canonical)
+
+    return _merge_and_dedupe_skills(current_skills, found)
+
+
 def format_date(date_str: str) -> str:
     """
     Convert date from YYYY-MM format to "Month YYYY" format.
@@ -191,13 +238,13 @@ RULES:
   * Professional memberships - these should go in "additional_info.professional_memberships" instead
   * Extracurricular activities that are not explicitly volunteer work - these should go in "projects" instead
 - "volunteer_work", "awards", "publications", and "leadership" are OPTIONAL - only include if present in the resume. Use empty lists [] if not present.
-- SKILLS EXTRACTION: Extract ALL skills, tools, technologies, and competencies mentioned anywhere in the resume:
+- SKILLS EXTRACTION: Extract ALL skills, tools, technologies, and competencies mentioned anywhere in the resume (do NOT limit to a dedicated skills section):
   * From dedicated skills sections (e.g., "Skills", "Technical Skills", "Computer Skills", "Core Competencies")
   * From experience bullet points (e.g., "Used Python and SQL to...")
-  * From project descriptions
+  * From project descriptions (e.g., "Next.js", "TypeScript", "PostgreSQL", "Jira", "Tableau", "Power BI")
   * From education coursework
   * Include: programming languages, software, frameworks, methodologies, tools, platforms, etc.
-  * Put all extracted skills in the top-level "skills" array.
+  * Put all extracted skills in the top-level "skills" array (do NOT leave this empty if skills appear outside the dedicated section).
 - "additional_info.computer_skills" or "additional_info.technical_skills": If there's a dedicated skills section in the resume, extract the raw text here (as a single string, preserving separators like commas, pipes, etc.). This is separate from the structured "skills" array.
 - "additional_info.certifications" MUST be a list of strings (one cert per element).
 - "additional_info.languages" MUST be a list of strings (one language per element).
@@ -230,6 +277,9 @@ RAW RESUME TEXT:
 
     # 2) Validate against the Resume model
     resume_obj = Resume.model_validate(parsed)
+
+    # 2b) Enrich skills with direct text scan (to capture tools in bullets/projects)
+    resume_obj.skills = _enrich_skills_from_text(raw_text, resume_obj.skills or [])
     
     # 3) Format dates to readable format (Month YYYY)
     # Format education dates

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Resume } from '@/types/resume';
+import { TailoredResult } from '@/types/resume';
 
 // Configure the base URL for the backend API
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -18,7 +18,7 @@ export interface TailorResumeParams {
 }
 
 export interface TailorResumeResponse {
-  data: Resume | Blob;
+  data: TailoredResult | Blob;
   success: boolean;
   error?: string;
 }

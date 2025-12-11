@@ -72,7 +72,7 @@ export default function TailorPage() {
       }
 
       // Store both JSON and PDF blob
-      sessionStorage.setItem('tailoredResume', JSON.stringify(jsonResponse.data));
+      sessionStorage.setItem('tailoredResult', JSON.stringify(jsonResponse.data));
       sessionStorage.setItem('originalFileName', selectedFile.name);
       
       // Create blob URL for PDF and store it
