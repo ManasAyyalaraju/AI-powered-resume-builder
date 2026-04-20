@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Refactr",
+  "version": "0.1.0",
+  "description": "Tailor and download your resume for the job on the current page.",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "downloads", "scripting"],
+  "host_permissions": ["http://localhost:8000/*"],
+  "action": {
+    "default_title": "Refactr",
+    "default_popup": "popup.html"
+  }
+}

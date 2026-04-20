@@ -4,16 +4,19 @@ from routers import tailor_routes, reformat_routes
 
 app = FastAPI(title="Auto Resume Tailor")
 
+FRONTEND_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://ai-powered-resume-builder-egn6vytdc-manas-s-projects-97f76173.vercel.app",
+]
+
+EXTENSION_AND_PREVIEW_ORIGIN_REGEX = r"(https://.*\.vercel\.app|chrome-extension://.*)"
+
 # CORS middleware to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Local development
-        "https://ai-powered-resume-builder-egn6vytdc-manas-s-projects-97f76173.vercel.app",  # Vercel production
-        # Add your custom domain here when you set it up:
-        # "https://your-custom-domain.com",
-    ],
-    allow_origin_regex=r"https://.*\.vercel\.app",  # All Vercel deployments (preview & production)
+    allow_origins=FRONTEND_ORIGINS,
+    allow_origin_regex=EXTENSION_AND_PREVIEW_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
