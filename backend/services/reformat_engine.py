@@ -54,6 +54,10 @@ def _trim_resume_strings(resume: Resume) -> Resume:
 
     resume.skills = [s.strip() for s in resume.skills if s and s.strip()]
 
+    for cat in resume.technical_skills:
+        cat.label = _strip_text(cat.label) or cat.label
+        cat.items = [i.strip() for i in cat.items if i and i.strip()]
+
     for exp in resume.experience:
         exp.title = _strip_text(exp.title)
         exp.company = _strip_text(exp.company)

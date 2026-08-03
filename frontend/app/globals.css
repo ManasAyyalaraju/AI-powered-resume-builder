@@ -2,15 +2,13 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #1f2937;
-  --primary: #06b6d4;
-  --primary-dark: #0891b2;
-  --primary-light: #e0f2fe;
+  --foreground: #0f172a;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #dbeafe;
   --success: #10b981;
   --error: #ef4444;
   --border: #e5e7eb;
-  --accent: #8b5cf6;
-  --accent-light: #ede9fe;
 }
 
 @theme inline {
@@ -45,7 +43,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #06b6d4;
+  background: #2563eb;
 }
 
 /* Smooth transitions */

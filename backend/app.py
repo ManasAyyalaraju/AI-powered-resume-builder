@@ -13,7 +13,7 @@ app.add_middleware(
         # Add your custom domain here when you set it up:
         # "https://your-custom-domain.com",
     ],
-    allow_origin_regex=r"https://.*\.vercel\.app",  # All Vercel deployments (preview & production)
+    allow_origin_regex=r"(https://.*\.vercel\.app|chrome-extension://.*)",  # Vercel deployments + the refactr Chrome extension
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

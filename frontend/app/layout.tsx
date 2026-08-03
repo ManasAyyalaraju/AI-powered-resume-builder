@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AuthProvider } from "@/lib/supabase/auth-context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "JobCraft - AI-Powered Resume Customization",
-  description: "Transform your resume for every job in seconds with AI-powered tailoring. Upload your resume, paste a job description, and get a perfectly customized resume instantly.",
+  title: "refactr - Tailor your resume for every job",
+  description: "Tailor your resume to match the keywords in any job description to boost your chances. Upload your resume, paste a job description, and get a perfectly customized resume instantly.",
 };
 
 export default function RootLayout({
@@ -27,7 +28,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

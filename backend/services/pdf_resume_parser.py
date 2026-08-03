@@ -196,7 +196,14 @@ Make sure the field NAMES and TYPES are EXACTLY as specified:
     "other": "string (any other additional information that doesn't fit above categories)"
   }},
 
-  "skills": ["string", "string", ...]
+  "skills": ["string", "string", ...],
+
+  "technical_skills": [
+    {{
+      "label": "string (the category name EXACTLY as it appears in the resume, e.g. 'Computer Software', 'Computer Languages', 'Frameworks', 'Certifications')",
+      "items": ["string", "string", ...]
+    }}
+  ]
 }}
 
 RULES:
@@ -246,6 +253,11 @@ RULES:
   * Include: programming languages, software, frameworks, methodologies, tools, platforms, etc.
   * Put all extracted skills in the top-level "skills" array (do NOT leave this empty if skills appear outside the dedicated section).
 - "additional_info.computer_skills" or "additional_info.technical_skills": If there's a dedicated skills section in the resume, extract the raw text here (as a single string, preserving separators like commas, pipes, etc.). This is separate from the structured "skills" array.
+- **TECHNICAL SKILLS SECTION (categorized)**: If the resume has a dedicated skills section formatted as CATEGORIZED bullets or lines (e.g. "Computer Software: Excel, Tableau, Jira" / "Computer Languages: Python, SQL, Java" / "Frameworks: React, Django"), extract each category as one object in "technical_skills" with:
+  * "label": the category name EXACTLY as written in the resume (e.g. "Computer Software", "Computer Languages", "Certifications") — do NOT invent or rename categories, and do NOT merge multiple categories into one.
+  * "items": the comma-separated values after the colon, split into a list, each trimmed of whitespace.
+  * Preserve the EXACT ORDER the categories appear in the resume.
+  * If the skills section is just a flat, uncategorized list (no "Label:" prefixes), leave "technical_skills" as an empty list — the flat list still goes in "skills" as usual.
 - "additional_info.certifications" MUST be a list of strings (one cert per element).
 - "additional_info.languages" MUST be a list of strings (one language per element).
 - "additional_info.professional_memberships" MUST be a list of strings (e.g., ["IEEE", "ACM", "American Medical Association"]).
@@ -280,7 +292,16 @@ RAW RESUME TEXT:
 
     # 2b) Enrich skills with direct text scan (to capture tools in bullets/projects)
     resume_obj.skills = _enrich_skills_from_text(raw_text, resume_obj.skills or [])
-    
+
+    # 2c) Trim whitespace on categorized technical skills, drop empty categories
+    cleaned_categories = []
+    for cat in resume_obj.technical_skills or []:
+        label = (cat.label or "").strip()
+        items = [i.strip() for i in (cat.items or []) if i and i.strip()]
+        if label and items:
+            cleaned_categories.append(cat.__class__(label=label, items=items))
+    resume_obj.technical_skills = cleaned_categories
+
     # 3) Format dates to readable format (Month YYYY)
     # Format education dates
     for edu in resume_obj.education:

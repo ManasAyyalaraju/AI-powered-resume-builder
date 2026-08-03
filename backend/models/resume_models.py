@@ -68,6 +68,11 @@ class Publication(BaseModel):
     url: Optional[str] = None
 
 
+class TechnicalSkillCategory(BaseModel):
+    label: str              # e.g. "Computer Software", "Computer Languages", "Certifications"
+    items: List[str] = []
+
+
 class AdditionalInfo(BaseModel):
     computer_skills: Optional[str] = None
     technical_skills: Optional[str] = None  # Alternative to computer_skills for non-tech roles
@@ -87,6 +92,10 @@ class Resume(BaseModel):
     # Internal skills list – this powers tailoring.
     # On the final resume, we'll show these under "Computer Skills" in Additional Info.
     skills: List[str] = []
+
+    # Categorized technical skills (e.g. "Computer Languages: Python, SQL, Java"),
+    # rendered as its own TECHNICAL SKILLS section when present.
+    technical_skills: List[TechnicalSkillCategory] = []
 
     education: List[EducationEntry] = []
     experience: List[Experience] = []

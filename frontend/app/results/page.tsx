@@ -169,8 +169,8 @@ export default function ResultsPage() {
       <main className="flex-1 py-12 px-4">
         <div className="container mx-auto max-w-6xl space-y-8">
           <div className="text-center animate-fade-in">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-cyan-100 to-purple-100 rounded-full mb-4 shadow-lg">
-              <CheckCircle className="w-10 h-10 text-cyan-600" />
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-4 shadow-lg">
+              <CheckCircle className="w-10 h-10 text-blue-600" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-3">
               Your Tailored Resume is Ready
@@ -197,7 +197,7 @@ export default function ResultsPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-cyan-600 mb-1">Compatibility Overview</p>
+                  <p className="text-sm font-semibold text-blue-600 mb-1">Compatibility Overview</p>
                   <h2 className="text-2xl font-bold text-gray-800 mb-2">
                     {score >= 80
                       ? 'Strong Match'
@@ -216,7 +216,7 @@ export default function ResultsPage() {
                 <button
                   onClick={handleDownloadPDF}
                   disabled={!pdfUrl || isDownloading}
-                  className="flex-1 inline-flex items-center justify-center gap-3 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-all shadow-md hover:shadow-lg"
+                  className="flex-1 inline-flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-all shadow-md hover:shadow-lg"
                 >
                   <Download className="w-5 h-5" />
                   {isDownloading ? 'Downloading...' : 'Download PDF'}
@@ -232,14 +232,14 @@ export default function ResultsPage() {
             </div>
 
             <div className="mt-6 grid md:grid-cols-3 gap-4 text-sm text-gray-700">
-              <div className="p-4 rounded-lg bg-cyan-50 border border-cyan-100">
-                <p className="font-semibold text-cyan-700">Must-have coverage</p>
+              <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
+                <p className="font-semibold text-blue-700">Must-have coverage</p>
                 <p className="text-2xl font-bold text-gray-800">
                   {Math.round((compatibility?.must_coverage || 0) * 100)}%
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-purple-50 border border-purple-100">
-                <p className="font-semibold text-purple-700">Nice-to-have coverage</p>
+              <div className="p-4 rounded-lg bg-green-50 border border-green-100">
+                <p className="font-semibold text-green-700">Nice-to-have coverage</p>
                 <p className="text-2xl font-bold text-gray-800">
                   {Math.round((compatibility?.nice_coverage || 0) * 100)}%
                 </p>
@@ -256,7 +256,7 @@ export default function ResultsPage() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm font-semibold text-cyan-600">From your resume</p>
+                  <p className="text-sm font-semibold text-blue-600">From your resume</p>
                   <h3 className="text-xl font-bold text-gray-800">Resume Skills</h3>
                 </div>
                 <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-700">
@@ -291,7 +291,7 @@ export default function ResultsPage() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="text-sm font-semibold text-cyan-600">From the JD</p>
+                    <p className="text-sm font-semibold text-blue-600">From the JD</p>
                     <h3 className="text-xl font-bold text-gray-800">Required Skills</h3>
                   </div>
                   <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-700">
@@ -384,14 +384,14 @@ export default function ResultsPage() {
               {compatibility?.missing_nice_to_have.length ? (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-5 h-5 text-purple-500" />
+                    <CheckCircle className="w-5 h-5 text-green-500" />
                     <h3 className="text-lg font-semibold text-gray-800">Nice-to-have opportunities</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {compatibility?.missing_nice_to_have.map((skill) => (
                       <span
                         key={skill}
-                        className="px-3 py-2 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200"
+                        className="px-3 py-2 rounded-full text-sm font-medium bg-green-50 text-green-700 border border-green-200"
                       >
                         {skill}
                       </span>
@@ -404,7 +404,7 @@ export default function ResultsPage() {
 
           {/* Resume Preview */}
           <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-cyan-500 to-purple-500 px-8 py-6">
+            <div className="bg-blue-600 px-8 py-6">
               <h2 className="text-2xl font-semibold text-white flex items-center gap-3">
                 <FileJson className="w-7 h-7" />
                 Your Tailored Resume
@@ -419,7 +419,7 @@ export default function ResultsPage() {
                 {pdfLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-20">
                     <div className="text-center">
-                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mb-4"></div>
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
                       <p className="text-gray-600">Loading preview...</p>
                     </div>
                   </div>

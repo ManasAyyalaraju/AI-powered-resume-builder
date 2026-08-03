@@ -11,10 +11,13 @@ const apiClient = axios.create({
   },
 });
 
+export type ResumeFormat = 'regular' | 'technical';
+
 export interface TailorResumeParams {
   pdfFile: File;
   jobDescription: string;
   outputFormat?: 'json' | 'pdf';
+  resumeFormat?: ResumeFormat;
 }
 
 export interface TailorResumeResponse {
@@ -40,12 +43,14 @@ export async function tailorResume({
   pdfFile,
   jobDescription,
   outputFormat = 'json',
+  resumeFormat = 'regular',
 }: TailorResumeParams): Promise<TailorResumeResponse> {
   try {
     const formData = new FormData();
     formData.append('pdf', pdfFile);
     formData.append('jd_text', jobDescription);
     formData.append('output', outputFormat);
+    formData.append('resume_format', resumeFormat);
 
     const response = await apiClient.post('/api/tailor/pdf', formData, {
       responseType: outputFormat === 'pdf' ? 'blob' : 'json',

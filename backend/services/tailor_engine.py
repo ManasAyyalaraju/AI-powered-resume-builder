@@ -51,7 +51,14 @@ def estimate_resume_fullness(resume: Resume) -> int:
     # Skills section counts as 1
     if resume.skills:
         score += 1
-    
+
+    # Categorized TECHNICAL SKILLS section adds a whole extra section to the
+    # page (section header + one line per category), so weight it accordingly
+    # rather than letting it go uncounted.
+    if resume.technical_skills:
+        score += 1  # section header, mirrors base weight of other sections
+        score += len(resume.technical_skills)  # each category line ~= a bullet
+
     return score
 
 
@@ -212,6 +219,7 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
     original_experience = [exp.model_copy(deep=True) for exp in resume.experience]
     original_projects = [proj.model_copy(deep=True) for proj in resume.projects]
     original_leadership = [lead.model_copy(deep=True) for lead in resume.leadership]
+    original_technical_skills = [cat.model_copy(deep=True) for cat in resume.technical_skills]
 
     # Step 1: rule-based skills adjustment
     resume = reorder_skills(resume, jd)
@@ -229,9 +237,12 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
         return resume
 
     rewritten_resume = Resume.model_validate(rewritten_data)
-    
+
     # Preserve compact_mode setting
     rewritten_resume.compact_mode = resume.compact_mode
+
+    # Preserve categorized technical skills exactly as parsed - never LLM-rewritten
+    rewritten_resume.technical_skills = original_technical_skills
 
     # Step 3a: lock experience metadata and bullet counts
     locked_experience = []

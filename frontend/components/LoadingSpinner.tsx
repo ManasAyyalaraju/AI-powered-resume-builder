@@ -14,8 +14,8 @@ export default function LoadingSpinner({
   return (
     <div className="flex flex-col items-center justify-center py-12">
       <div className="relative">
-        <Loader2 className="w-12 h-12 text-cyan-500 animate-spin" />
-        <div className="absolute inset-0 blur-xl bg-cyan-500 opacity-20 animate-pulse" />
+        <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+        <div className="absolute inset-0 blur-xl bg-blue-600 opacity-20 animate-pulse" />
       </div>
 
       {message && (

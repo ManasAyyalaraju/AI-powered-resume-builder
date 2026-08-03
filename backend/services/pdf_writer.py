@@ -11,6 +11,33 @@ from models.resume_models import Resume
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")
 
+_NON_TECH_QUALIFIERS = ("computer", "programming", "coding", "software", "tech")
+
+
+def _dedupe_additional_info_against_technical_skills(resume: Resume) -> None:
+    """
+    Mutates resume.additional_info in place to avoid showing the same content
+    twice when a technical_skills category already covers it (e.g. a
+    "Certifications" category in TECHNICAL SKILLS vs. additional_info.certifications).
+    Only call this when the TECHNICAL SKILLS section will actually be rendered.
+    """
+    if not resume.additional_info or not resume.technical_skills:
+        return
+
+    labels_lower = [cat.label.lower() for cat in resume.technical_skills]
+
+    if any("certif" in l for l in labels_lower):
+        resume.additional_info.certifications = []
+
+    if any(
+        "language" in l and not any(q in l for q in _NON_TECH_QUALIFIERS)
+        for l in labels_lower
+    ):
+        resume.additional_info.languages = []
+
+    if any("member" in l for l in labels_lower):
+        resume.additional_info.professional_memberships = []
+
 
 def escape_latex(text: str) -> str:
     """
@@ -66,19 +93,29 @@ env = Environment(
 env.filters['escape_latex'] = escape_latex
 
 
-def render_resume_pdf(resume: Resume) -> bytes:
+def render_resume_pdf(resume: Resume, use_technical_skills: bool = True) -> bytes:
     """
     Render a Resume model into a PDF bytes object using a LaTeX template.
     Uses pdflatex for professional typography and precise formatting.
+
+    use_technical_skills: when False, renders the "regular" template - the
+    categorized TECHNICAL SKILLS section is omitted even if the resume has
+    parsed technical_skills data (falls back to the single-line skills format).
     """
+    render_target = resume.model_copy(deep=True)
+    if use_technical_skills:
+        _dedupe_additional_info_against_technical_skills(render_target)
+    else:
+        render_target.technical_skills = []
+
     # Create a temporary directory for LaTeX compilation
     temp_dir = tempfile.mkdtemp()
-    
+
     try:
         # Render the LaTeX template
         # LaTeX escaping is handled by the |escape_latex filter in the template
         template = env.get_template("resume_template.tex")
-        latex_str = template.render(resume=resume)
+        latex_str = template.render(resume=render_target)
         
         # Write LaTeX file
         tex_path = os.path.join(temp_dir, "resume.tex")

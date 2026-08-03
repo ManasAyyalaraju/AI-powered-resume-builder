@@ -54,7 +54,7 @@ export default function JobDescriptionInput({
           bg-white
           text-gray-800
           placeholder-gray-400
-          focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent
+          focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent
           transition-colors
           ${
             showWarning

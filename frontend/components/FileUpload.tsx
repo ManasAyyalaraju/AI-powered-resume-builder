@@ -61,8 +61,8 @@ export default function FileUpload({ onFileSelect, selectedFile }: FileUploadPro
             border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
             transition-all duration-200 bg-white
             ${isDragActive 
-              ? 'border-cyan-500 bg-cyan-50' 
-              : 'border-gray-300 hover:border-cyan-400'
+              ? 'border-blue-600 bg-blue-50' 
+              : 'border-gray-300 hover:border-blue-500'
             }
             ${error ? 'border-red-500 bg-red-50' : ''}
           `}
@@ -73,14 +73,14 @@ export default function FileUpload({ onFileSelect, selectedFile }: FileUploadPro
             <div className={`
               p-4 rounded-full
               ${isDragActive 
-                ? 'bg-cyan-100' 
+                ? 'bg-blue-100' 
                 : 'bg-gray-100'
               }
             `}>
               <Upload className={`
                 w-8 h-8
                 ${isDragActive 
-                  ? 'text-cyan-600' 
+                  ? 'text-blue-600' 
                   : 'text-gray-600'
                 }
               `} />

@@ -105,6 +105,7 @@ async def tailor_resume_from_pdf(
     pdf: UploadFile = File(...),
     jd_text: str = Form(...),
     output: str = Form("json"),
+    resume_format: str = Form("regular"),
 ):
     """
     Upload:
@@ -139,7 +140,9 @@ async def tailor_resume_from_pdf(
         elif getattr(resume.additional_info, "technical_skills", None):
             line_skills = _parse_skill_line(resume.additional_info.technical_skills)
 
-        resume.skills = _merge_and_dedupe_skills(resume.skills or [], line_skills)
+        category_skills: List[str] = [item for cat in resume.technical_skills for item in cat.items]
+
+        resume.skills = _merge_and_dedupe_skills(resume.skills or [], line_skills, category_skills)
 
         # 2) JD text -> JobDescription
         jd = parse_job_description_from_text(jd_text)
@@ -165,7 +168,8 @@ async def tailor_resume_from_pdf(
 
         # 4) Output mode
         if output.lower() == "pdf":
-            pdf_bytes = render_resume_pdf(tailored_resume)
+            use_technical_skills = resume_format.lower() == "technical"
+            pdf_bytes = render_resume_pdf(tailored_resume, use_technical_skills=use_technical_skills)
             return StreamingResponse(
                 iter([pdf_bytes]),
                 media_type="application/pdf",

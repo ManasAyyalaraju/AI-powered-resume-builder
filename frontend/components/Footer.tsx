@@ -21,7 +21,7 @@ export default function Footer() {
               href="https://github.com/ManasAyyalaraju"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-600 hover:text-cyan-600 transition-colors"
+              className="text-gray-600 hover:text-blue-600 transition-colors"
               aria-label="GitHub"
             >
               <Github className="w-5 h-5" />
@@ -30,7 +30,7 @@ export default function Footer() {
               href="https://www.linkedin.com/in/manas-ayyalaraju"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-600 hover:text-cyan-600 transition-colors"
+              className="text-gray-600 hover:text-blue-600 transition-colors"
               aria-label="LinkedIn"
             >
               <Linkedin className="w-5 h-5" />

@@ -197,6 +197,17 @@ VAR{resume.summary|escape_latex}
 %{ endfor %}
 %{ endif %}
 
+% Technical Skills
+%{ if resume.technical_skills %}
+\section*{TECHNICAL SKILLS}
+\begin{itemize}
+%{ for cat in resume.technical_skills %}
+  \item \textbf{VAR{cat.label|escape_latex}:} %{ for item in cat.items %}VAR{item|escape_latex}%{ if not loop.last %}, %{ endif %}%{ endfor %}
+%{ endfor %}
+\end{itemize}
+\sectionvspace
+%{ endif %}
+
 % Experience
 %{ if resume.experience %}
 \section*{EXPERIENCE}
@@ -310,19 +321,21 @@ VAR{resume.summary|escape_latex}
 %{ endif %}
 
 % Additional Information
-%{ if resume.additional_info or resume.skills or resume.leadership %}
+%{ if resume.additional_info or (resume.skills and not resume.technical_skills) or resume.leadership %}
 \section*{ADDITIONAL INFORMATION}
 
-%{ if resume.additional_info %}
-  %{ if resume.additional_info.computer_skills %}
+%{ if not resume.technical_skills %}
+  %{ if resume.additional_info %}
+    %{ if resume.additional_info.computer_skills %}
 \noindent\textbf{Computer Skills:} VAR{resume.additional_info.computer_skills|escape_latex}
-  %{ elif resume.additional_info.technical_skills %}
+    %{ elif resume.additional_info.technical_skills %}
 \noindent\textbf{Technical Skills:} VAR{resume.additional_info.technical_skills|escape_latex}
+    %{ elif resume.skills %}
+\noindent\textbf{Skills:} %{ for skill in resume.skills %}VAR{skill|escape_latex}%{ if not loop.last %} $|$ %{ endif %}%{ endfor %}
+    %{ endif %}
   %{ elif resume.skills %}
 \noindent\textbf{Skills:} %{ for skill in resume.skills %}VAR{skill|escape_latex}%{ if not loop.last %} $|$ %{ endif %}%{ endfor %}
   %{ endif %}
-%{ elif resume.skills %}
-\noindent\textbf{Skills:} %{ for skill in resume.skills %}VAR{skill|escape_latex}%{ if not loop.last %} $|$ %{ endif %}%{ endfor %}
 %{ endif %}
 
 %{ if resume.additional_info %}
