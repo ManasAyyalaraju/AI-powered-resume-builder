@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from openai import AuthenticationError
 
@@ -6,6 +6,7 @@ from core.config import settings
 from services.pdf_resume_parser import parse_pdf_resume_to_json
 from services.pdf_writer import render_resume_pdf
 from services.reformat_engine import reformat_resume
+from services.tailor_engine import ensure_technical_skills
 
 router = APIRouter(tags=["Reformatter"])
 
@@ -13,6 +14,7 @@ router = APIRouter(tags=["Reformatter"])
 @router.post("/reformat/pdf")
 async def reformat_resume_from_pdf(
     pdf: UploadFile = File(...),
+    resume_format: str = Form("regular"),
 ):
     """
     Upload a resume PDF and get a reformatted, ATS-friendly PDF back.
@@ -46,8 +48,17 @@ async def reformat_resume_from_pdf(
             if parsed_skills:
                 resume.skills = parsed_skills
 
+        # Categorize skills into TECHNICAL SKILLS *before* reformatting so the
+        # compact-mode/spacing decision (computed inside reformat_resume) knows
+        # about the section that's about to be added - otherwise a resume
+        # that's borderline full gets loose spacing and overflows to page 2
+        # once the extra section shows up at render time.
+        use_technical_skills = resume_format.lower() == "technical"
+        if use_technical_skills:
+            resume = ensure_technical_skills(resume)
+
         reformatted = reformat_resume(resume)
-        pdf_bytes = render_resume_pdf(reformatted)
+        pdf_bytes = render_resume_pdf(reformatted, use_technical_skills=use_technical_skills)
 
         return StreamingResponse(
             iter([pdf_bytes]),

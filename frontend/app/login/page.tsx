@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -9,8 +9,22 @@ import ErrorMessage from '@/components/ErrorMessage';
 import { LogIn } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
+function safeRedirectTarget(value: string | null): string {
+  // Only allow same-site relative paths - reject absolute/protocol-relative URLs to avoid an open redirect.
+  return value && value.startsWith('/') && !value.startsWith('//') ? value : '/dashboard';
+}
+
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,7 +47,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push('/dashboard');
+    router.push(safeRedirectTarget(searchParams.get('redirect')));
     router.refresh();
   };
 
@@ -108,7 +122,10 @@ export default function LoginPage() {
 
             <p className="mt-6 text-center text-sm text-gray-600">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+              <Link
+                href={searchParams.get('redirect') ? `/signup?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/signup'}
+                className="text-blue-600 hover:text-blue-700 font-medium"
+              >
                 Sign up
               </Link>
             </p>

@@ -6,6 +6,7 @@ class Contact(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     linkedin: Optional[str] = None
+    website: Optional[str] = None
     location: Optional[str] = None
 
 
@@ -108,3 +109,4 @@ class Resume(BaseModel):
     
     # Formatting control
     compact_mode: bool = False  # If True, use minimal spacing to fit on one page
+    ultra_compact_mode: bool = False  # If True, also nudge the font size down slightly - set automatically by render_resume_pdf when compact spacing alone isn't enough to fit one page

@@ -295,3 +295,47 @@ Instructions:
         }
     except Exception:
         return {"headline": None, "summary": None}
+
+
+def categorize_skills(skills: list[str]) -> list[dict]:
+    """
+    Bucket a flat list of skills into labeled technical-skill categories
+    (e.g. "Languages", "Frameworks & Libraries", "Tools & Platforms") for
+    resumes whose skills section isn't already categorized. Used when the
+    user picks the Technical template but the parsed resume has no
+    technical_skills data to render.
+    """
+    if not client or not skills:
+        return []
+
+    system_message = (
+        "You are a resume editor. Group the given flat list of skills into "
+        "2-5 clear categories (e.g. Languages, Frameworks & Libraries, Tools "
+        "& Platforms, Cloud & DevOps). Do not add, remove, or rename any skill."
+    )
+
+    prompt = f"""
+Skills:
+{json.dumps(skills, indent=2)}
+
+Instructions:
+- Only output JSON with this shape: {{"categories": [{{"label": "...", "items": ["...", ...]}}]}}
+- Every skill from the input must appear in exactly one category, unchanged
+- Category labels should be short (2-4 words) and specific to the skill types present
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(response.choices[0].message.content)
+        categories = data.get("categories", [])
+        return [c for c in categories if c.get("label") and c.get("items")]
+    except Exception:
+        return []

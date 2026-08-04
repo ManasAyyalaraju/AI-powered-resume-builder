@@ -73,6 +73,22 @@ def escape_latex(text: str) -> str:
     return text
 
 
+def ensure_url_scheme(url: str) -> str:
+    """
+    Prepend https:// when a URL has no scheme (e.g. "linkedin.com/in/x").
+    Without this, hyperref's \\href classifies the link as a local file
+    rather than a URL - which silently breaks click-through in most PDF
+    viewers and also skips our custom link color for the same reason.
+    """
+    if not url:
+        return ""
+    if not isinstance(url, str):
+        url = str(url)
+    if "://" in url:
+        return url
+    return f"https://{url}"
+
+
 # Custom Jinja2 environment for LaTeX
 # Use VAR{} instead of {{ }} to avoid conflicts with LaTeX
 env = Environment(
@@ -91,6 +107,14 @@ env = Environment(
 
 # Add escape_latex as a filter
 env.filters['escape_latex'] = escape_latex
+env.filters['ensure_url_scheme'] = ensure_url_scheme
+
+
+def _count_pdf_pages(pdf_bytes: bytes) -> int:
+    from io import BytesIO
+    from PyPDF2 import PdfReader
+
+    return len(PdfReader(BytesIO(pdf_bytes)).pages)
 
 
 def render_resume_pdf(resume: Resume, use_technical_skills: bool = True) -> bytes:
@@ -101,6 +125,11 @@ def render_resume_pdf(resume: Resume, use_technical_skills: bool = True) -> byte
     use_technical_skills: when False, renders the "regular" template - the
     categorized TECHNICAL SKILLS section is omitted even if the resume has
     parsed technical_skills data (falls back to the single-line skills format).
+
+    If compact_mode is on and the rendered PDF still doesn't fit on one page,
+    retries once with ultra_compact_mode (a small font-size nudge) rather than
+    guessing upfront whether a given resume needs it - so the extra
+    compression only ever gets applied to resumes that actually overflow.
     """
     render_target = resume.model_copy(deep=True)
     if use_technical_skills:
@@ -108,6 +137,22 @@ def render_resume_pdf(resume: Resume, use_technical_skills: bool = True) -> byte
     else:
         render_target.technical_skills = []
 
+    pdf_bytes = _compile_resume_pdf(render_target)
+
+    if render_target.compact_mode and not render_target.ultra_compact_mode:
+        try:
+            if _count_pdf_pages(pdf_bytes) > 1:
+                render_target.ultra_compact_mode = True
+                pdf_bytes = _compile_resume_pdf(render_target)
+        except Exception:
+            # If page counting fails for any reason, fall back to the
+            # already-successful first render rather than blocking the user.
+            pass
+
+    return pdf_bytes
+
+
+def _compile_resume_pdf(render_target: Resume) -> bytes:
     # Create a temporary directory for LaTeX compilation
     temp_dir = tempfile.mkdtemp()
 

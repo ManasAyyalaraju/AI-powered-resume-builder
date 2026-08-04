@@ -1,7 +1,11 @@
 \documentclass[10pt,letterpaper]{article}
 
 % Packages
+%{ if resume.compact_mode %}
+\usepackage[margin=0.5in,top=0.4in,bottom=0.4in]{geometry}
+%{ else %}
 \usepackage[margin=0.5in]{geometry}
+%{ endif %}
 \usepackage{enumitem}
 \usepackage{hyperref}
 \usepackage{titlesec}
@@ -9,13 +13,17 @@
 \usepackage{xcolor}
 \usepackage{fontenc}
 \usepackage[T1]{fontenc}
+\usepackage[USenglish]{babel}  % proper hyphenation patterns
 \usepackage{mathptmx}  % Times New Roman font
+\usepackage[stretch=25,shrink=25]{microtype}  % font expansion/protrusion for better line fills
 
 % Hyperlink setup
 \hypersetup{
     colorlinks=true,
-    linkcolor=blue,
-    urlcolor=blue,
+    linkcolor=black,
+    urlcolor=black,
+    filecolor=black,
+    citecolor=black,
     pdfborder={0 0 0}
 }
 
@@ -24,7 +32,7 @@
 
 % Improve text justification and line breaking for better bullet point formatting
 % Allow more flexible spacing and better line filling
-\tolerance=500
+\tolerance=2000
 \emergencystretch=3em
 \hyphenpenalty=50
 \exhyphenpenalty=50
@@ -42,15 +50,19 @@
   {}
   [\titlerule]
 
-\titlespacing*{\section}{0pt}{10pt}{2pt}
-
 % Dynamic spacing variables based on compact mode
 %{ if resume.compact_mode %}
+\titlespacing*{\section}{0pt}{5pt}{1pt}
 \newcommand{\entryvspace}{\vspace{1pt}}
 \newcommand{\sectionvspace}{\vspace{3pt}}
+\newcommand{\headervspace}{\vspace{-8pt}}
+\newcommand{\contactvspace}{\vspace{2pt}}
 %{ else %}
+\titlespacing*{\section}{0pt}{10pt}{2pt}
 \newcommand{\entryvspace}{\vspace{5pt}}
 \newcommand{\sectionvspace}{\vspace{5pt}}
+\newcommand{\headervspace}{\vspace{-5pt}}
+\newcommand{\contactvspace}{\vspace{5pt}}
 %{ endif %}
 
 % Custom commands
@@ -58,14 +70,14 @@
   \begin{center}
     {\huge\bfseries #1}
   \end{center}
-  \vspace{-5pt}
+  \headervspace
 }
 
 \newcommand{\resumeContact}[1]{
   \begin{center}
     #1
   \end{center}
-  \vspace{5pt}
+  \contactvspace
 }
 
 \newcommand{\resumeSubheading}[4]{
@@ -118,6 +130,9 @@
 }
 
 \begin{document}
+%{ if resume.ultra_compact_mode %}
+\fontsize{9.3}{11.3}\selectfont
+%{ endif %}
 
 % Name
 \resumeHeader{VAR{resume.name|escape_latex}}
@@ -128,8 +143,10 @@
     %{ if resume.contact.email %}VAR{resume.contact.email|escape_latex}%{ endif %}
     %{ if resume.contact.email and resume.contact.phone %} $\cdot$ %{ endif %}
     %{ if resume.contact.phone %}VAR{resume.contact.phone|escape_latex}%{ endif %}
-    %{ if (resume.contact.email or resume.contact.phone) and resume.contact.linkedin %} $\cdot$ %{ endif %}
-    %{ if resume.contact.linkedin %}\href{VAR{resume.contact.linkedin|escape_latex}}{VAR{resume.contact.linkedin|escape_latex}}%{ endif %}
+    %{ if (resume.contact.email or resume.contact.phone) and resume.contact.website %} $\cdot$ %{ endif %}
+    %{ if resume.contact.website %}\href{VAR{resume.contact.website|ensure_url_scheme|escape_latex}}{VAR{resume.contact.website|escape_latex}}%{ endif %}
+    %{ if (resume.contact.email or resume.contact.phone or resume.contact.website) and resume.contact.linkedin %} $\cdot$ %{ endif %}
+    %{ if resume.contact.linkedin %}\href{VAR{resume.contact.linkedin|ensure_url_scheme|escape_latex}}{VAR{resume.contact.linkedin|escape_latex}}%{ endif %}
   %{ endif %}
 }
 
@@ -314,7 +331,7 @@ VAR{resume.summary|escape_latex}
 }
 %{ endif %}
 %{ if pub.url %}
-\par\noindent\href{VAR{pub.url|escape_latex}}{VAR{pub.url|escape_latex}}
+\par\noindent\href{VAR{pub.url|ensure_url_scheme|escape_latex}}{VAR{pub.url|escape_latex}}
 %{ endif %}
 \entryvspace
 %{ endfor %}

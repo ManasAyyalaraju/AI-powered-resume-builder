@@ -3,8 +3,9 @@ import { getSupabaseClient } from './lib/supabase-client';
 import { listBaseResumes, downloadBaseResume, uploadGeneratedResume, type BaseResumeRow } from './lib/resumes';
 import { tailorResumePdf } from './lib/api';
 import type { JobContext } from './lib/extract-jd';
+import { WEB_APP_URL } from './lib/config';
 
-type Screen = 'loading' | 'login' | 'picker' | 'tailoring' | 'done' | 'error';
+type Screen = 'loading' | 'login' | 'waiting-login' | 'picker' | 'tailoring' | 'done' | 'error';
 
 export interface PanelAppOptions {
   container: HTMLElement;
@@ -19,13 +20,14 @@ interface State {
   selectedResumeId: string | null;
   resumeFormat: 'regular' | 'technical';
   errorMessage: string;
-  loginEmail: string;
-  loginError: string;
-  loginBusy: boolean;
 }
+
+const POLL_INTERVAL_MS = 1500;
+const POLL_TIMEOUT_MS = 3 * 60 * 1000;
 
 export function mountPanelApp({ container, jobContext, onClose }: PanelAppOptions): void {
   const supabase = getSupabaseClient();
+  let pollHandle: ReturnType<typeof setInterval> | null = null;
 
   const state: State = {
     screen: 'loading',
@@ -34,9 +36,6 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
     selectedResumeId: null,
     resumeFormat: 'regular',
     errorMessage: '',
-    loginEmail: '',
-    loginError: '',
-    loginBusy: false,
   };
 
   function render() {
@@ -64,6 +63,14 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
         return `<div class="refactr-status"><div class="refactr-spinner"></div><p>Loading...</p></div>`;
       case 'login':
         return renderLogin();
+      case 'waiting-login':
+        return `
+          <div class="refactr-status">
+            <div class="refactr-spinner"></div>
+            <p>Waiting for you to log in in the other tab...</p>
+            <button type="button" class="refactr-btn refactr-btn-secondary" style="margin-top:14px;" data-action="cancel-login">Cancel</button>
+          </div>
+        `;
       case 'picker':
         return renderPicker();
       case 'tailoring':
@@ -82,18 +89,11 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
 
   function renderLogin(): string {
     return `
-      ${state.loginError ? `<p class="refactr-error">${escapeHtml(state.loginError)}</p>` : ''}
-      <div class="refactr-field">
-        <label for="refactr-email">Email</label>
-        <input id="refactr-email" type="email" value="${escapeHtml(state.loginEmail)}" placeholder="you@example.com" />
-      </div>
-      <div class="refactr-field">
-        <label for="refactr-password">Password</label>
-        <input id="refactr-password" type="password" placeholder="••••••••" />
-      </div>
-      <button type="button" class="refactr-btn" data-action="login" ${state.loginBusy ? 'disabled' : ''}>
-        ${state.loginBusy ? 'Logging in...' : 'Log in'}
-      </button>
+      ${state.errorMessage ? `<p class="refactr-error">${escapeHtml(state.errorMessage)}</p>` : ''}
+      <p style="font-size:13px;color:#374151;margin:0 0 14px;">
+        Log in to your refactr account to tailor resumes from this page.
+      </p>
+      <button type="button" class="refactr-btn" data-action="login">Log in to refactr</button>
     `;
   }
 
@@ -144,8 +144,16 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
   }
 
   function bindEvents() {
-    container.querySelector('[data-action="close"]')?.addEventListener('click', () => onClose?.());
-    container.querySelector('[data-action="login"]')?.addEventListener('click', handleLogin);
+    container.querySelector('[data-action="close"]')?.addEventListener('click', () => {
+      stopPolling();
+      onClose?.();
+    });
+    container.querySelector('[data-action="login"]')?.addEventListener('click', handleLoginClick);
+    container.querySelector('[data-action="cancel-login"]')?.addEventListener('click', () => {
+      stopPolling();
+      state.screen = 'login';
+      render();
+    });
     container.querySelector('[data-action="tailor"]')?.addEventListener('click', handleTailor);
     container.querySelector('[data-action="reset"]')?.addEventListener('click', () => {
       state.screen = 'picker';
@@ -162,33 +170,41 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
     });
   }
 
-  async function handleLogin() {
-    const email = (container.querySelector('#refactr-email') as HTMLInputElement)?.value ?? '';
-    const password = (container.querySelector('#refactr-password') as HTMLInputElement)?.value ?? '';
-    state.loginEmail = email;
-    state.loginError = '';
-
-    if (!email || !password) {
-      state.loginError = 'Enter your email and password.';
-      render();
-      return;
-    }
-
-    state.loginBusy = true;
+  function handleLoginClick() {
+    window.open(`${WEB_APP_URL}/extension/connect`, '_blank');
+    state.errorMessage = '';
+    state.screen = 'waiting-login';
     render();
+    startPolling();
+  }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  function startPolling() {
+    stopPolling();
+    const startedAt = Date.now();
 
-    state.loginBusy = false;
+    pollHandle = setInterval(async () => {
+      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        stopPolling();
+        state.errorMessage = "Didn't detect a login. Please try again.";
+        state.screen = 'login';
+        render();
+        return;
+      }
 
-    if (error || !data.user) {
-      state.loginError = error?.message ?? 'Login failed.';
-      render();
-      return;
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        stopPolling();
+        state.user = data.user;
+        await loadResumes();
+      }
+    }, POLL_INTERVAL_MS);
+  }
+
+  function stopPolling() {
+    if (pollHandle !== null) {
+      clearInterval(pollHandle);
+      pollHandle = null;
     }
-
-    state.user = data.user;
-    await loadResumes();
   }
 
   async function loadResumes() {

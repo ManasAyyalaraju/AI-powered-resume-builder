@@ -1,6 +1,6 @@
-from models.resume_models import Resume
+from models.resume_models import Resume, TechnicalSkillCategory
 from models.job_models import JobDescription
-from .llm_client import rewrite_resume_sections
+from .llm_client import rewrite_resume_sections, categorize_skills
 import json
 import re
 
@@ -138,6 +138,25 @@ def format_skill(skill: str) -> str:
 def format_skills_list(skills: list[str]) -> list[str]:
     """Format a list of skills according to the formatting rules."""
     return [format_skill(skill) for skill in skills]
+
+
+def ensure_technical_skills(resume: Resume) -> Resume:
+    """
+    Populate resume.technical_skills from the flat resume.skills list when
+    the source resume didn't already present skills in a categorized format.
+    Only call this when the Technical template is actually being rendered -
+    without it, picking "Technical" on a resume with a flat skills list has
+    no visible effect since the template only renders a TECHNICAL SKILLS
+    section when technical_skills is non-empty.
+    """
+    if resume.technical_skills or not resume.skills:
+        return resume
+
+    categories = categorize_skills(resume.skills)
+    if categories:
+        resume.technical_skills = [TechnicalSkillCategory(**c) for c in categories]
+
+    return resume
 
 
 def reorder_skills(resume: Resume, jd: JobDescription) -> Resume:

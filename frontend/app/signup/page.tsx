@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -10,8 +10,22 @@ import { UserPlus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { stashPendingDisplayName } from '@/lib/supabase/auth-context';
 
+function safeRedirectTarget(value: string | null): string {
+  // Only allow same-site relative paths - reject absolute/protocol-relative URLs to avoid an open redirect.
+  return value && value.startsWith('/') && !value.startsWith('//') ? value : '/dashboard';
+}
+
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -46,7 +60,7 @@ export default function SignupPage() {
           .update({ display_name: displayName.trim() })
           .eq('id', data.user.id);
       }
-      router.push('/dashboard');
+      router.push(safeRedirectTarget(searchParams.get('redirect')));
       router.refresh();
       return;
     }
@@ -156,7 +170,10 @@ export default function SignupPage() {
 
             <p className="mt-6 text-center text-sm text-gray-600">
               Already have an account?{' '}
-              <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+              <Link
+                href={searchParams.get('redirect') ? `/login?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/login'}
+                className="text-blue-600 hover:text-blue-700 font-medium"
+              >
                 Log in
               </Link>
             </p>

@@ -47,6 +47,7 @@ def _trim_resume_strings(resume: Resume) -> Resume:
         resume.contact.email = _strip_text(resume.contact.email)
         resume.contact.phone = _strip_text(resume.contact.phone)
         resume.contact.linkedin = _strip_text(resume.contact.linkedin)
+        resume.contact.website = _strip_text(resume.contact.website)
         resume.contact.location = _strip_text(resume.contact.location)
 
     resume.headline = _strip_text(resume.headline)

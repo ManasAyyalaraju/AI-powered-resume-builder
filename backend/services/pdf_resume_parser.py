@@ -110,6 +110,7 @@ Make sure the field NAMES and TYPES are EXACTLY as specified:
     "email": "string",
     "phone": "string",
     "linkedin": "string",
+    "website": "string (personal website or portfolio URL, e.g. a personal domain or GitHub - separate from LinkedIn)",
     "location": "string"
   }},
 
@@ -261,7 +262,7 @@ RULES:
 - "additional_info.certifications" MUST be a list of strings (one cert per element).
 - "additional_info.languages" MUST be a list of strings (one language per element).
 - "additional_info.professional_memberships" MUST be a list of strings (e.g., ["IEEE", "ACM", "American Medical Association"]).
-- Put email, phone number, LinkedIn URL, and location inside the `contact` object (do NOT repeat them as top-level fields).
+- Put email, phone number, LinkedIn URL, personal website/portfolio URL, and location inside the `contact` object (do NOT repeat them as top-level fields).
 - Extract "headline" if there's a professional title/headline below the name.
 - Extract "summary" if there's a professional summary, objective, or profile section.
 - Return ONLY valid JSON. No comments, no markdown, no explanations.

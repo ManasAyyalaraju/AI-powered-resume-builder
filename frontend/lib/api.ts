@@ -14,10 +14,15 @@ const apiClient = axios.create({
 export type ResumeFormat = 'regular' | 'technical';
 
 export interface TailorResumeParams {
-  pdfFile: File;
+  pdfFile: File | Blob;
+  fileName?: string;
   jobDescription: string;
   outputFormat?: 'json' | 'pdf';
   resumeFormat?: ResumeFormat;
+}
+
+function resolveFileName(pdfFile: File | Blob, fileName?: string): string {
+  return fileName ?? (pdfFile instanceof File ? pdfFile.name : 'resume.pdf');
 }
 
 export interface TailorResumeResponse {
@@ -27,7 +32,9 @@ export interface TailorResumeResponse {
 }
 
 export interface ReformatResumeParams {
-  pdfFile: File;
+  pdfFile: File | Blob;
+  fileName?: string;
+  resumeFormat?: ResumeFormat;
 }
 
 export interface ReformatResumeResponse {
@@ -41,13 +48,14 @@ export interface ReformatResumeResponse {
  */
 export async function tailorResume({
   pdfFile,
+  fileName,
   jobDescription,
   outputFormat = 'json',
   resumeFormat = 'regular',
 }: TailorResumeParams): Promise<TailorResumeResponse> {
   try {
     const formData = new FormData();
-    formData.append('pdf', pdfFile);
+    formData.append('pdf', pdfFile, resolveFileName(pdfFile, fileName));
     formData.append('jd_text', jobDescription);
     formData.append('output', outputFormat);
     formData.append('resume_format', resumeFormat);
@@ -75,10 +83,13 @@ export async function tailorResume({
  */
 export async function reformatResume({
   pdfFile,
+  fileName,
+  resumeFormat = 'regular',
 }: ReformatResumeParams): Promise<ReformatResumeResponse> {
   try {
     const formData = new FormData();
-    formData.append('pdf', pdfFile);
+    formData.append('pdf', pdfFile, resolveFileName(pdfFile, fileName));
+    formData.append('resume_format', resumeFormat);
 
     const response = await apiClient.post('/api/reformat/pdf', formData, {
       responseType: 'blob',
@@ -96,6 +107,18 @@ export async function reformatResume({
       error: error instanceof Error ? error.message : 'An error occurred',
     };
   }
+}
+
+/**
+ * Fetch a sample PDF showing what the Regular or Technical template looks like.
+ */
+export async function fetchTemplatePreview(format: ResumeFormat): Promise<Blob> {
+  const response = await apiClient.get('/api/templates/preview', {
+    params: { format },
+    responseType: 'blob',
+    headers: { 'Content-Type': undefined },
+  });
+  return response.data;
 }
 
 /**

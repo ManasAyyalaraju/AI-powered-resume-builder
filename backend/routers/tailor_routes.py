@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from services.pdf_resume_parser import parse_pdf_resume_to_json
 from services.job_parser import parse_job_description_from_text
-from services.tailor_engine import tailor_resume
+from services.tailor_engine import tailor_resume, ensure_technical_skills
 from services.keyword_extractor import extract_skills_and_keywords
 from services.pdf_writer import render_resume_pdf
 from fastapi.responses import StreamingResponse
@@ -144,6 +144,15 @@ async def tailor_resume_from_pdf(
 
         resume.skills = _merge_and_dedupe_skills(resume.skills or [], line_skills, category_skills)
 
+        # Categorize skills into TECHNICAL SKILLS *before* tailoring so the
+        # compact-mode/spacing decision (computed inside tailor_resume) knows
+        # about the section that's about to be added - otherwise a resume
+        # that's borderline full gets loose spacing and overflows to page 2
+        # once the extra section shows up at render time.
+        use_technical_skills = resume_format.lower() == "technical" and output.lower() == "pdf"
+        if use_technical_skills:
+            resume = ensure_technical_skills(resume)
+
         # 2) JD text -> JobDescription
         jd = parse_job_description_from_text(jd_text)
 
@@ -168,7 +177,6 @@ async def tailor_resume_from_pdf(
 
         # 4) Output mode
         if output.lower() == "pdf":
-            use_technical_skills = resume_format.lower() == "technical"
             pdf_bytes = render_resume_pdf(tailored_resume, use_technical_skills=use_technical_skills)
             return StreamingResponse(
                 iter([pdf_bytes]),

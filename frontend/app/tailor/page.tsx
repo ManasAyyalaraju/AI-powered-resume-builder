@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import FileUpload from '@/components/FileUpload';
 import JobDescriptionInput from '@/components/JobDescriptionInput';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorMessage from '@/components/ErrorMessage';
@@ -12,29 +12,57 @@ import { Sparkles, Wand2, FileText, Code2 } from 'lucide-react';
 import { tailorResume, reformatResume, ResumeFormat } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/supabase/auth-context';
-import { uploadBaseResume, uploadGeneratedResume } from '@/lib/supabase/resumes';
+import { listBaseResumes, downloadBaseResume, uploadGeneratedResume, BaseResumeRow } from '@/lib/supabase/resumes';
 import type { TailoredResult } from '@/types/resume';
 
 type FlowTab = 'tailor' | 'reformat';
 
 export default function TailorPage() {
+  return (
+    <Suspense fallback={null}>
+      <TailorPageInner />
+    </Suspense>
+  );
+}
+
+function TailorPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const supabase = createClient();
+
   const [activeTab, setActiveTab] = useState<FlowTab>('tailor');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [resumes, setResumes] = useState<BaseResumeRow[]>([]);
+  const [resumesLoading, setResumesLoading] = useState(true);
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [jobDescription, setJobDescription] = useState('');
   const [resumeFormat, setResumeFormat] = useState<ResumeFormat>('regular');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  const [reformatFile, setReformatFile] = useState<File | null>(null);
   const [reformatLoading, setReformatLoading] = useState(false);
   const [reformatError, setReformatError] = useState<string>('');
   const [reformatSuccess, setReformatSuccess] = useState<string>('');
   const [reformatPdfUrl, setReformatPdfUrl] = useState<string>('');
 
-  const canSubmit = selectedFile && jobDescription.length >= 100;
+  useEffect(() => {
+    if (!user) return;
+    listBaseResumes(supabase, user.id).then((rows) => {
+      if (rows.length === 0) {
+        router.push('/resumes/new');
+        return;
+      }
+      setResumes(rows);
+      const requested = searchParams.get('resumeId');
+      const preselect = requested && rows.some((r) => r.id === requested) ? requested : rows[0].id;
+      setSelectedResumeId(preselect);
+      setResumesLoading(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const selectedResume = resumes.find((r) => r.id === selectedResumeId) ?? null;
+  const canSubmit = selectedResume && jobDescription.length >= 100;
 
   const handleTabChange = (tab: FlowTab) => {
     setActiveTab(tab);
@@ -48,15 +76,23 @@ export default function TailorPage() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedFile || !jobDescription) return;
+    if (!selectedResume || !jobDescription || !user) return;
 
     setIsLoading(true);
     setError('');
 
     try {
+      const pdfBlob = await downloadBaseResume(supabase, selectedResume.storage_path);
+      if (!pdfBlob) {
+        setError('Could not load the selected resume. Please try again.');
+        return;
+      }
+      const fileName = selectedResume.file_name ?? selectedResume.title;
+
       // Request JSON first to get structured data
       const jsonResponse = await tailorResume({
-        pdfFile: selectedFile,
+        pdfFile: pdfBlob,
+        fileName,
         jobDescription,
         outputFormat: 'json',
         resumeFormat,
@@ -69,7 +105,8 @@ export default function TailorPage() {
 
       // Request PDF version
       const pdfResponse = await tailorResume({
-        pdfFile: selectedFile,
+        pdfFile: pdfBlob,
+        fileName,
         jobDescription,
         outputFormat: 'pdf',
         resumeFormat,
@@ -82,31 +119,27 @@ export default function TailorPage() {
 
       // Store both JSON and PDF blob
       sessionStorage.setItem('tailoredResult', JSON.stringify(jsonResponse.data));
-      sessionStorage.setItem('originalFileName', selectedFile.name);
+      sessionStorage.setItem('originalFileName', fileName);
 
       // Create blob URL for PDF and store it
-      const pdfBlob = pdfResponse.data as Blob;
-      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const tailoredPdfBlob = pdfResponse.data as Blob;
+      const pdfUrl = URL.createObjectURL(tailoredPdfBlob);
       sessionStorage.setItem('pdfBlobUrl', pdfUrl);
 
       // Best-effort save to the user's account - never blocks navigation to /results
-      if (user) {
-        const result = jsonResponse.data as TailoredResult;
-        uploadBaseResume(supabase, user.id, selectedFile).then((baseResume) => {
-          uploadGeneratedResume(supabase, user.id, {
-            baseResumeId: baseResume?.id ?? null,
-            pdfBlob,
-            jobTitle: result.job_description?.title,
-            company: result.job_description?.company,
-            jobDescription,
-            tailoringOptions: {
-              mode: 'tailor',
-              score: result.compatibility?.score,
-              resume_format: resumeFormat,
-            },
-          });
-        });
-      }
+      const result = jsonResponse.data as TailoredResult;
+      uploadGeneratedResume(supabase, user.id, {
+        baseResumeId: selectedResume.id,
+        pdfBlob: tailoredPdfBlob,
+        jobTitle: result.job_description?.title,
+        company: result.job_description?.company,
+        jobDescription,
+        tailoringOptions: {
+          mode: 'tailor',
+          score: result.compatibility?.score,
+          resume_format: resumeFormat,
+        },
+      });
 
       // Navigate to results page
       router.push('/results');
@@ -119,7 +152,7 @@ export default function TailorPage() {
   };
 
   const handleReformatSubmit = async () => {
-    if (!reformatFile) return;
+    if (!selectedResume || !user) return;
 
     setReformatLoading(true);
     setReformatError('');
@@ -130,30 +163,31 @@ export default function TailorPage() {
     }
 
     try {
-      const pdfResponse = await reformatResume({
-        pdfFile: reformatFile,
-      });
+      const pdfBlob = await downloadBaseResume(supabase, selectedResume.storage_path);
+      if (!pdfBlob) {
+        setReformatError('Could not load the selected resume. Please try again.');
+        return;
+      }
+      const fileName = selectedResume.file_name ?? selectedResume.title;
+
+      const pdfResponse = await reformatResume({ pdfFile: pdfBlob, fileName });
 
       if (!pdfResponse.success || !pdfResponse.data) {
         setReformatError(pdfResponse.error || 'Failed to reformat resume. Please try again.');
         return;
       }
 
-      const pdfBlob = pdfResponse.data as Blob;
-      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const reformattedBlob = pdfResponse.data as Blob;
+      const pdfUrl = URL.createObjectURL(reformattedBlob);
       setReformatPdfUrl(pdfUrl);
       setReformatSuccess('ATS-friendly PDF is ready. You can preview or download it below.');
 
       // Best-effort save to the user's account - never blocks the preview
-      if (user) {
-        uploadBaseResume(supabase, user.id, reformatFile).then((baseResume) => {
-          uploadGeneratedResume(supabase, user.id, {
-            baseResumeId: baseResume?.id ?? null,
-            pdfBlob,
-            tailoringOptions: { mode: 'reformat' },
-          });
-        });
-      }
+      uploadGeneratedResume(supabase, user.id, {
+        baseResumeId: selectedResume.id,
+        pdfBlob: reformattedBlob,
+        tailoringOptions: { mode: 'reformat' },
+      });
     } catch (err) {
       console.error('Error:', err);
       setReformatError('An unexpected error occurred. Please check if the backend is running.');
@@ -176,6 +210,46 @@ export default function TailorPage() {
     setError('');
   };
 
+  const renderResumePicker = () => (
+    <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">Your Resume</h2>
+          <p className="text-gray-600">Choose which saved resume to use</p>
+        </div>
+        <Link
+          href="/resumes/new"
+          className="text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap flex-shrink-0"
+        >
+          + Add another
+        </Link>
+      </div>
+      <select
+        value={selectedResumeId ?? ''}
+        onChange={(e) => setSelectedResumeId(e.target.value)}
+        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-colors"
+      >
+        {resumes.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.title}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+
+  if (!user || resumesLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 py-12 px-4 flex items-center justify-center">
+          <LoadingSpinner message="Loading..." />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -193,8 +267,8 @@ export default function TailorPage() {
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               {activeTab === 'tailor'
-                ? 'Upload your resume and paste a job description to tailor it for that role.'
-                : 'Upload your resume to instantly reformat it into an ATS-friendly PDF—no job description needed.'}
+                ? 'Pick a saved resume and paste a job description to tailor it for that role.'
+                : 'Pick a saved resume to instantly reformat it into an ATS-friendly PDF—no job description needed.'}
             </p>
           </div>
 
@@ -228,60 +302,42 @@ export default function TailorPage() {
           {activeTab === 'tailor' ? (
             isLoading ? (
               <div className="bg-white rounded-xl shadow-lg p-12">
-                <LoadingSpinner 
+                <LoadingSpinner
                   message="Tailoring your resume..."
                   submessage="This may take 1-3 minutes. Please wait."
                 />
               </div>
             ) : error ? (
               <div className="bg-white rounded-xl shadow-lg p-8">
-                <ErrorMessage 
+                <ErrorMessage
                   message={error}
                   onRetry={handleRetry}
                 />
               </div>
             ) : (
               <>
-                {/* Two Column Layout */}
-                <div className="grid md:grid-cols-2 gap-8 mb-8">
-                  {/* Left Column - File Upload */}
-                  <div className="bg-white rounded-xl shadow-lg p-8">
-                    <div className="mb-6">
-                      <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-                        Step 1: Upload Resume
-                      </h2>
-                      <p className="text-gray-600">
-                        Upload your current resume in PDF format
-                      </p>
-                    </div>
-                    <FileUpload 
-                      selectedFile={selectedFile}
-                      onFileSelect={setSelectedFile}
-                    />
-                  </div>
+                {renderResumePicker()}
 
-                  {/* Right Column - Job Description */}
-                  <div className="bg-white rounded-xl shadow-lg p-8">
-                    <div className="mb-6">
-                      <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-                        Step 2: Job Description
-                      </h2>
-                      <p className="text-gray-600">
-                        Paste the complete job description
-                      </p>
-                    </div>
-                    <JobDescriptionInput 
-                      value={jobDescription}
-                      onChange={setJobDescription}
-                    />
+                <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+                      Job Description
+                    </h2>
+                    <p className="text-gray-600">
+                      Paste the complete job description
+                    </p>
                   </div>
+                  <JobDescriptionInput
+                    value={jobDescription}
+                    onChange={setJobDescription}
+                  />
                 </div>
 
                 {/* Template Choice */}
                 <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
                   <div className="mb-6">
                     <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-                      Step 3: Choose a Template
+                      Choose a Template
                     </h2>
                     <p className="text-gray-600">
                       Pick how your tailored resume should be formatted
@@ -332,7 +388,7 @@ export default function TailorPage() {
                     onClick={handleSubmit}
                     disabled={!canSubmit}
                     className={`
-                      inline-flex items-center justify-center gap-3 
+                      inline-flex items-center justify-center gap-3
                       px-12 py-5 rounded-xl font-semibold text-lg
                       shadow-lg hover:shadow-xl
                       transition-all duration-200
@@ -344,13 +400,10 @@ export default function TailorPage() {
                   >
                     Tailor My Resume
                   </button>
-                  
+
                   {!canSubmit && (
                     <p className="mt-4 text-sm text-gray-500">
-                      {!selectedFile 
-                        ? 'Please upload your resume' 
-                        : 'Please provide a job description (min 100 characters)'
-                      }
+                      Please provide a job description (min 100 characters)
                     </p>
                   )}
                 </div>
@@ -371,20 +424,22 @@ export default function TailorPage() {
             )
           ) : reformatLoading ? (
             <div className="bg-white rounded-xl shadow-lg p-12">
-              <LoadingSpinner 
+              <LoadingSpinner
                 message="Reformatting your resume..."
                 submessage="This usually finishes in under a minute."
               />
             </div>
           ) : reformatError ? (
             <div className="bg-white rounded-xl shadow-lg p-8">
-              <ErrorMessage 
+              <ErrorMessage
                 message={reformatError}
                 onRetry={() => setReformatError('')}
               />
             </div>
           ) : (
             <>
+              {renderResumePicker()}
+
               <div className="bg-white rounded-xl shadow-lg p-8">
                 <div className="mb-6">
                   <h2 className="text-2xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
@@ -392,27 +447,20 @@ export default function TailorPage() {
                     Reformat Your Resume
                   </h2>
                   <p className="text-gray-600">
-                    Upload your resume to instantly generate an ATS-friendly, clean PDF without changing your content for a specific role.
+                    Instantly generate an ATS-friendly, clean PDF from your selected resume without changing its content.
                   </p>
-                </div>
-
-                <div className="mb-8">
-                  <FileUpload 
-                    selectedFile={reformatFile}
-                    onFileSelect={setReformatFile}
-                  />
                 </div>
 
                 <div className="text-center">
                   <button
                     onClick={handleReformatSubmit}
-                    disabled={!reformatFile || reformatLoading}
+                    disabled={!selectedResume || reformatLoading}
                     className={`
                       inline-flex items-center justify-center gap-3
                       px-12 py-5 rounded-xl font-semibold text-lg
                       shadow-lg hover:shadow-xl
                       transition-all duration-200
-                      ${reformatFile && !reformatLoading
+                      ${selectedResume && !reformatLoading
                         ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transform hover:scale-105'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }
@@ -421,12 +469,6 @@ export default function TailorPage() {
                     <Wand2 className="w-6 h-6" />
                     Reformat My Resume
                   </button>
-
-                  {!reformatFile && (
-                    <p className="mt-4 text-sm text-gray-500">
-                      Please upload your resume to start reformatting
-                    </p>
-                  )}
                 </div>
 
                 {reformatSuccess && (
@@ -480,4 +522,3 @@ export default function TailorPage() {
     </div>
   );
 }
-
