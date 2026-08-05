@@ -44,10 +44,10 @@ export default function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-full hover:bg-gray-100 pl-1 pr-3 py-1 transition-colors cursor-pointer"
+        className="flex items-center gap-2 rounded-[14px] px-6 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer"
       >
-        <CircleUserRound className="w-7 h-7 text-gray-700" strokeWidth={1.75} />
-        <span className="text-sm font-medium text-gray-700 hidden sm:inline">
+        <CircleUserRound className="w-4 h-4 text-black" strokeWidth={2} />
+        <span className="text-[16px] font-medium text-black hidden sm:inline">
           {displayName || user.email}
         </span>
       </button>

@@ -4,7 +4,40 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import LandingProductVisual from '@/components/LandingProductVisual';
-import { Upload, Sparkles, Download, Shield, Zap, FileText, Target } from 'lucide-react';
+import { Upload, FileText, Download } from 'lucide-react';
+
+const features = [
+  {
+    icon: '/figma-icons/ai.png',
+    title: 'AI Powered Matching',
+    description: 'Advanced AI analyzes job descriptions and optimizes your resume content',
+  },
+  {
+    icon: '/figma-icons/severity.png',
+    title: 'Keyword Optimization',
+    description: 'Automatically identifies and emphasizes relevant keywords from job postings',
+  },
+  {
+    icon: '/figma-icons/flash-on.png',
+    title: 'Instant Results',
+    description: 'Get your tailored resume in seconds, not hours of manual editing',
+  },
+  {
+    icon: '/figma-icons/document.png',
+    title: 'Professional PDF Output',
+    description: 'LaTeX-powered PDF generation for perfect formatting and typography',
+  },
+  {
+    icon: '/figma-icons/shield.png',
+    title: 'Privacy First',
+    description: 'Your data is processed securely and never stored on our servers',
+  },
+  {
+    icon: '/figma-icons/outline.png',
+    title: 'ATS-Friendly Formatting',
+    description: 'Ensure your resume meets ATS standards with clean, optimized formatting',
+  },
+];
 
 export default function Home() {
   return (
@@ -13,27 +46,18 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="py-20 px-4 bg-white">
+        <section className="pt-24 pb-20 px-6 md:px-10 bg-white">
           <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
-                <Sparkles className="w-4 h-4" />
-                AI-Powered Resume Tailoring & Reformatting
-              </div>
-
-              <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-                Tailor your resume for each job,
-                <br />
-                no typing needed!
+            <div className="flex flex-col items-center gap-6 text-center mb-20">
+              <h1 className="font-bold text-[40px] md:text-[64px] leading-[1.05] tracking-[-1.28px] text-black">
+                Tailor your resume for each job
               </h1>
-
-              <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-                Tailor your resume to match the keywords in any job description to boost your chances.
+              <p className="text-[20px] md:text-[24px] text-black/75">
+                Boost your chances of landing your dream job!!
               </p>
-
               <Link
                 href="/signup"
-                className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all"
+                className="inline-flex items-center justify-center bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors"
               >
                 Get Started
               </Link>
@@ -44,50 +68,50 @@ export default function Home() {
         </section>
 
         {/* How It Works Section */}
-        <section className="py-20 px-4 bg-gray-50">
+        <section className="py-20 px-6 md:px-10 bg-[#f7f7f7]">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              <h2 className="font-semibold text-[36px] md:text-[48px] tracking-[-0.96px] text-black mb-4">
                 How It Works
               </h2>
-              <p className="text-lg text-gray-600">
+              <p className="text-[20px] md:text-[24px] font-light text-black tracking-[-0.48px]">
                 Three simple steps to your tailored or reformatted resume
               </p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-6">
-                  <Upload className="w-8 h-8 text-blue-600" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-white border border-[#e6e6e6] rounded-full mb-6">
+                  <Upload className="w-7 h-7 text-[#187fe7]" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                <h3 className="text-[20px] font-medium text-black mb-3">
                   1. Upload Resume
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-black/75">
                   Upload your existing resume in PDF format. Our AI will extract all the information.
                 </p>
               </div>
 
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-6">
-                  <FileText className="w-8 h-8 text-blue-600" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-white border border-[#e6e6e6] rounded-full mb-6">
+                  <FileText className="w-7 h-7 text-[#187fe7]" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                <h3 className="text-[20px] font-medium text-black mb-3">
                   2. Choose Tailor or Reformat
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-black/75">
                   Paste a job description for tailoring, or skip straight to ATS reformatting.
                 </p>
               </div>
 
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-6">
-                  <Download className="w-8 h-8 text-green-600" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-white border border-[#e6e6e6] rounded-full mb-6">
+                  <Download className="w-7 h-7 text-[#187fe7]" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                <h3 className="text-[20px] font-medium text-black mb-3">
                   3. Download Your PDF
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-black/75">
                   Download a tailored or ATS-friendly PDF, ready to submit.
                 </p>
               </div>
@@ -96,95 +120,52 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section className="py-20 px-4 bg-white">
+        <section className="py-20 px-6 md:px-10 bg-white">
           <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <div className="mb-16">
+              <h2 className="font-semibold text-[36px] md:text-[48px] tracking-[-0.96px] text-black mb-4">
                 Powerful Features
               </h2>
-              <p className="text-lg text-gray-600">
-                Everything you need to stand out in your job applications
+              <p className="text-[20px] md:text-[24px] font-light text-black tracking-[-0.48px]">
+                Everything you need for a powerful application
               </p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                <Sparkles className="w-10 h-10 text-blue-600 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  AI-Powered Matching
-                </h3>
-                <p className="text-gray-600">
-                  Advanced AI analyzes job descriptions and optimizes your resume content.
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                <Target className="w-10 h-10 text-blue-600 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Keyword Optimization
-                </h3>
-                <p className="text-gray-600">
-                  Automatically identifies and emphasizes relevant keywords from job postings.
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                <Zap className="w-10 h-10 text-yellow-500 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Instant Results
-                </h3>
-                <p className="text-gray-600">
-                  Get your tailored resume in seconds, not hours of manual editing.
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                <FileText className="w-10 h-10 text-blue-600 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Professional PDF Output
-                </h3>
-                <p className="text-gray-600">
-                  LaTeX-powered PDF generation for perfect formatting and typography.
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                <Shield className="w-10 h-10 text-green-500 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Privacy First
-                </h3>
-                <p className="text-gray-600">
-                  Your data is processed securely and never stored on our servers.
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                <Download className="w-10 h-10 text-blue-600 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  ATS-Friendly Formatting
-                </h3>
-                <p className="text-gray-600">
-                  Ensure your resume meets ATS standards with clean, optimized formatting.
-                </p>
-              </div>
+              {features.map((feature) => (
+                <div
+                  key={feature.title}
+                  className="bg-white border border-[#e6e6e6] rounded-xl p-8 pt-5 flex flex-col gap-5"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <img src={feature.icon} alt="" className="w-[45px] h-[45px]" />
+                    <h3 className="text-[24px] font-medium text-black">
+                      {feature.title}
+                    </h3>
+                  </div>
+                  <p className="text-[16px] font-medium text-black">
+                    {feature.description}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 px-4 bg-blue-600">
-          <div className="container mx-auto max-w-4xl text-center">
-            <h2 className="text-4xl font-bold text-white mb-6">
-              Ready to Land Your Dream Job?
+        <section className="py-20 px-6 md:px-10 bg-[#f7f7f7]">
+          <div className="container mx-auto max-w-4xl flex flex-col items-center gap-6 text-center">
+            <h2 className="font-semibold text-[36px] md:text-[48px] tracking-[-0.96px] text-black">
+              Land Your Dream Job
             </h2>
-            <p className="text-xl text-white/90 mb-8">
-              Start tailoring your resume now and increase your chances of getting interviews.
+            <p className="text-[20px] md:text-[24px] font-medium text-black">
+              Start Tailoring NOW !!!
             </p>
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-blue-600 font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all"
+              className="inline-flex items-center justify-center bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors"
             >
-              Get Started Now
+              Get Started
             </Link>
           </div>
         </section>

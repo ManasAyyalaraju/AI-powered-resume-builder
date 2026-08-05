@@ -297,21 +297,52 @@ Instructions:
         return {"headline": None, "summary": None}
 
 
+MAX_SKILL_CATEGORIES = 3  # hard cap, enforced below - on top of this, Certifications gets its own category
+
+
 def categorize_skills(skills: list[str]) -> list[dict]:
     """
-    Bucket a flat list of skills into labeled technical-skill categories
-    (e.g. "Languages", "Frameworks & Libraries", "Tools & Platforms") for
-    resumes whose skills section isn't already categorized. Used when the
-    user picks the Technical template but the parsed resume has no
-    technical_skills data to render.
+    Bucket a flat list of skills into at most MAX_SKILL_CATEGORIES broad,
+    resume-specific categories (plus a separate Certifications category when
+    applicable), for resumes whose skills section isn't already categorized.
+    Used when the user picks the Technical template but the parsed resume has
+    no technical_skills data to render.
+
+    Category labels are chosen dynamically (not a fixed taxonomy) so they fit
+    the actual skill set - e.g. "Design Tools" for a designer, "Programming"
+    for an engineer - but the model is pushed hard toward FEW, BROAD
+    categories rather than one-off niche ones. An earlier version let the
+    model invent as many categories as it wanted, which produced overly
+    granular, inconsistent groupings (e.g. "Web Development", "Data Science",
+    "Databases", "Business Intelligence", "DevOps & Tools" all for one
+    person's skill list) and let certifications get miscategorized as tools.
+    The category count is a hard requirement, so it's enforced in code below
+    rather than trusted to the prompt alone.
     """
     if not client or not skills:
         return []
 
     system_message = (
-        "You are a resume editor. Group the given flat list of skills into "
-        "2-5 clear categories (e.g. Languages, Frameworks & Libraries, Tools "
-        "& Platforms, Cloud & DevOps). Do not add, remove, or rename any skill."
+        f"You are a resume editor. Group the given flat list of skills into "
+        f"AT MOST {MAX_SKILL_CATEGORIES} BROAD categories for actual skills, "
+        f"plus a separate 'Certifications' category when applicable - "
+        f"{MAX_SKILL_CATEGORIES} skill categories is a hard maximum, never "
+        f"more. Each category should cover a meaningful share of the list, "
+        f"not just one or two items. Choose labels that fit this specific "
+        f"skill set (e.g. 'Programming', 'Design Tools', 'Data Analysis') "
+        f"rather than a fixed template, but do not fragment skills into many "
+        f"narrow categories - when in doubt, merge related skills into the "
+        f"same broader category instead of creating a new one. Keep each "
+        f"label SHORT - one concise term or short phrase (1-2 words), never "
+        f"a combined 'X & Y' or 'X and Y' label - pick whichever single "
+        f"concept best fits most of that category's skills. The one "
+        f"exception to the category cap: if any skills are professional "
+        f"certifications or credentials (even if worded like a skill, e.g. "
+        f"'AWS Certified Cloud Practitioner'), always put those together "
+        f"under their own 'Certifications' category, separate from the "
+        f"rest - this is in addition to, not counted against, the "
+        f"{MAX_SKILL_CATEGORIES}-category limit for actual skills. Do not "
+        f"add, remove, or rename any skill."
     )
 
     prompt = f"""
@@ -320,8 +351,10 @@ Skills:
 
 Instructions:
 - Only output JSON with this shape: {{"categories": [{{"label": "...", "items": ["...", ...]}}]}}
+- At most {MAX_SKILL_CATEGORIES} categories for actual skills - prefer fewer, wider categories over many narrow ones
+- Keep each label short - one concise term or short phrase, not a combined "X & Y" label
 - Every skill from the input must appear in exactly one category, unchanged
-- Category labels should be short (2-4 words) and specific to the skill types present
+- Certifications/credentials always go in their own "Certifications" category, separate from technical skills and not counted against the {MAX_SKILL_CATEGORIES}-category limit
 """
 
     try:
@@ -336,6 +369,63 @@ Instructions:
         )
         data = json.loads(response.choices[0].message.content)
         categories = data.get("categories", [])
-        return [c for c in categories if c.get("label") and c.get("items")]
+        categories = [c for c in categories if c.get("label") and c.get("items")]
+        categories = _enforce_skill_category_cap(categories)
+        return _restore_dropped_skills(categories, skills)
     except Exception:
         return []
+
+
+def _enforce_skill_category_cap(categories: list[dict]) -> list[dict]:
+    """
+    Hard-enforce MAX_SKILL_CATEGORIES regardless of what the model returned:
+    Certifications is always kept as its own category (doesn't count against
+    the cap), and any non-certification categories beyond the limit get their
+    items folded into the last kept category rather than dropped.
+    """
+    cert_categories = [c for c in categories if "certif" in c["label"].lower()]
+    skill_categories = [c for c in categories if "certif" not in c["label"].lower()]
+
+    if len(skill_categories) > MAX_SKILL_CATEGORIES:
+        kept = skill_categories[:MAX_SKILL_CATEGORIES]
+        overflow = skill_categories[MAX_SKILL_CATEGORIES:]
+        for extra in overflow:
+            kept[-1]["items"].extend(extra["items"])
+        skill_categories = kept
+
+    return skill_categories + cert_categories
+
+
+def _restore_dropped_skills(categories: list[dict], original_skills: list[str]) -> list[dict]:
+    """
+    The model occasionally omits an input skill from its response entirely
+    (observed most often with certification-like entries). Never let that
+    silently lose content from the user's resume: any skill missing from
+    every category gets added back - into a "Certifications" category
+    (created if needed) when it looks like a credential, otherwise appended
+    to the last category.
+    """
+    placed = {item.strip().lower() for c in categories for item in c["items"]}
+    missing = [s for s in original_skills if s.strip().lower() not in placed]
+    if not missing:
+        return categories
+
+    cert_idx = next((i for i, c in enumerate(categories) if "certif" in c["label"].lower()), None)
+    # Fixed ahead of the loop so a newly-created Certifications category
+    # never becomes the fallback target for a later non-cert missing skill.
+    fallback_idx = next((i for i, c in enumerate(categories) if "certif" not in c["label"].lower()), None)
+
+    for skill in missing:
+        if "certif" in skill.lower():
+            if cert_idx is not None:
+                categories[cert_idx]["items"].append(skill)
+            else:
+                categories.append({"label": "Certifications", "items": [skill]})
+                cert_idx = len(categories) - 1
+        elif fallback_idx is not None:
+            categories[fallback_idx]["items"].append(skill)
+        else:
+            categories.append({"label": "Skills", "items": [skill]})
+            fallback_idx = len(categories) - 1
+
+    return categories

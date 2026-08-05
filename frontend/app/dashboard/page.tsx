@@ -9,44 +9,46 @@ import { useAuth } from '@/lib/supabase/auth-context';
 import { createClient } from '@/lib/supabase/client';
 import { listBaseResumes, downloadBaseResume, BaseResumeRow } from '@/lib/supabase/resumes';
 import { downloadPDF } from '@/lib/api';
-import { FilePlus2, FileText, Wand2, Download } from 'lucide-react';
+import { Plus, Download, ChevronDown, X } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, displayName } = useAuth();
+  const { user } = useAuth();
   const supabase = createClient();
   const [resumes, setResumes] = useState<BaseResumeRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPreviewUrl, setCurrentPreviewUrl] = useState('');
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     listBaseResumes(supabase, user.id).then((rows) => {
       setResumes(rows);
+      setSelectedResumeId(rows[0]?.id ?? null);
       setLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const currentResume = resumes[0] ?? null;
-  const olderResumes = resumes.slice(1);
+  const selectedResume = resumes.find((r) => r.id === selectedResumeId) ?? null;
 
-  const handleDownloadCurrent = async () => {
-    if (!currentPreviewUrl || !currentResume) return;
-    const blob = await fetch(currentPreviewUrl).then((res) => res.blob());
-    downloadPDF(blob, currentResume.file_name ?? currentResume.title);
+  const handleDownload = async () => {
+    if (!previewUrl || !selectedResume) return;
+    const blob = await fetch(previewUrl).then((res) => res.blob());
+    downloadPDF(blob, selectedResume.file_name ?? selectedResume.title);
   };
 
   useEffect(() => {
-    if (!currentResume) return;
+    if (!selectedResume) return;
 
     let objectUrl = '';
     setPreviewLoading(true);
 
-    downloadBaseResume(supabase, currentResume.storage_path).then((blob) => {
+    downloadBaseResume(supabase, selectedResume.storage_path).then((blob) => {
       if (blob) {
         objectUrl = URL.createObjectURL(blob);
-        setCurrentPreviewUrl(objectUrl);
+        setPreviewUrl(objectUrl);
       }
       setPreviewLoading(false);
     });
@@ -55,128 +57,147 @@ export default function DashboardPage() {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentResume?.id]);
+  }, [selectedResume?.id]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setExpanded(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [expanded]);
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-1 py-12 px-4">
+      <main className="flex-1 py-16 px-6 md:px-10">
         <div className="container mx-auto max-w-6xl">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back{displayName ? `, ${displayName}` : ''}
-          </h1>
-          <p className="text-gray-600 mb-10">{user?.email}</p>
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-10 sm:mb-16">
+            <h1 className="font-bold text-[28px] sm:text-[36px] md:text-[44px] lg:text-[48px] leading-[1.05] tracking-[-0.96px] text-black">
+              Resume Board
+            </h1>
+            <Link
+              href="/resumes/new"
+              className="inline-flex items-center gap-2 bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors flex-shrink-0 self-start"
+            >
+              Add New Resume
+              <Plus className="w-4 h-4" />
+            </Link>
+          </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Left: current resume + history */}
-            <div className="lg:col-span-2">
-              <Link
-                href="/resumes/new"
-                className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow p-6 mb-8"
-              >
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <FilePlus2 className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Add a resume</h2>
-                  <p className="text-sm text-gray-600">Upload a resume to save it to your account.</p>
-                </div>
-              </Link>
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Left: resume view */}
+            <div className="w-full lg:w-[360px] flex-shrink-0 flex flex-col gap-8">
+              <div className="bg-[#fffcfc] border border-black rounded">
+                <div className="flex items-center justify-between border-b border-black px-4 h-[50px] sm:h-[58px]">
+                  {loading ? (
+                    <span className="text-sm text-black/50">Loading…</span>
+                  ) : resumes.length > 0 ? (
+                    <div className="relative">
+                      <select
+                        value={selectedResumeId ?? ''}
+                        onChange={(e) => setSelectedResumeId(e.target.value)}
+                        className="appearance-none bg-transparent text-[14px] font-medium text-black pr-6 focus:outline-none cursor-pointer max-w-[160px] truncate"
+                      >
+                        {resumes.map((resume) => (
+                          <option key={resume.id} value={resume.id}>
+                            {resume.file_name ?? resume.title}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-black absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  ) : (
+                    <span className="text-sm text-black/50">No resumes yet</span>
+                  )}
 
-              {!loading && !currentResume ? (
-                <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center mb-8">
-                  <FileText className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500">
-                    Your current resume will show up here once you add one.
-                  </p>
+                  <button
+                    onClick={handleDownload}
+                    disabled={!previewUrl}
+                    className="inline-flex items-center gap-1.5 text-[10px] font-medium text-black hover:text-[#187fe7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                  >
+                    <Download className="w-3 h-3" />
+                    Download
+                  </button>
                 </div>
-              ) : currentResume ? (
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-8">
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{currentResume.title}</p>
-                      <p className="text-xs text-gray-500">
-                        Saved {new Date(currentResume.created_at).toLocaleDateString()}
+
+                <div className="p-2">
+                  {!loading && resumes.length === 0 ? (
+                    <div className="py-16 text-center">
+                      <p className="text-sm text-black/50">
+                        Add a resume to see it here.
                       </p>
                     </div>
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      <button
-                        onClick={handleDownloadCurrent}
-                        disabled={!currentPreviewUrl}
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </button>
-                      <Link
-                        href={`/tailor?resumeId=${currentResume.id}`}
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700"
-                      >
-                        <Wand2 className="w-4 h-4" />
-                        Tailor
-                      </Link>
+                  ) : previewLoading ? (
+                    <div className="py-16">
+                      <LoadingSpinner message="Loading resume..." />
                     </div>
-                  </div>
-                  <div className="p-4 md:p-6">
-                    {previewLoading ? (
-                      <div className="py-12">
-                        <LoadingSpinner message="Loading your resume..." />
+                  ) : previewUrl ? (
+                    <div
+                      onClick={() => setExpanded(true)}
+                      className="relative w-full aspect-[8.5/11] cursor-pointer group overflow-hidden"
+                    >
+                      <iframe
+                        src={`${previewUrl}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
+                        className="w-full h-full border-0 pointer-events-none"
+                        title="Resume preview"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black text-xs font-medium px-3 py-1.5 rounded-full shadow">
+                          Click to expand
+                        </span>
                       </div>
-                    ) : currentPreviewUrl ? (
-                      <div className="border border-gray-200 rounded-lg overflow-hidden">
-                        <iframe
-                          src={`${currentPreviewUrl}#view=FitH&toolbar=0&navpanes=0&scrollbar=1`}
-                          className="w-full h-[800px] border-0"
-                          title="Current resume preview"
-                        />
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 text-center py-12">Couldn&apos;t load a preview.</p>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-black/50 text-center py-16">Couldn&apos;t load a preview.</p>
+                  )}
                 </div>
-              ) : null}
+              </div>
 
-              {olderResumes.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                    Older resumes
-                  </h3>
-                  <div className="space-y-3">
-                    {olderResumes.map((resume) => (
-                      <div
-                        key={resume.id}
-                        className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl p-4"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 text-gray-500" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 truncate">{resume.title}</p>
-                          <p className="text-xs text-gray-500">
-                            Saved {new Date(resume.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Link
-                          href={`/tailor?resumeId=${resume.id}`}
-                          className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 flex-shrink-0"
-                        >
-                          <Wand2 className="w-4 h-4" />
-                          Tailor
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="bg-[#fffcfc] border border-black rounded h-[155px] sm:h-[185px]" />
             </div>
 
-            {/* Right: reserved for later */}
-            <div className="lg:col-span-1" />
+            {/* Right: reserved for future work */}
+            <div className="flex-1 min-w-0 bg-[#fffcfc] border border-black rounded flex flex-col min-h-[260px] sm:min-h-[400px] lg:min-h-[602px]">
+              <div className="border-b border-black px-6 flex items-center h-[50px] sm:h-[58px] flex-shrink-0">
+                <h2 className="text-[20px] font-semibold text-black">Dashboard</h2>
+              </div>
+            </div>
           </div>
         </div>
       </main>
+
+      {expanded && previewUrl && (
+        <div
+          onClick={() => setExpanded(false)}
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-8"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-lg shadow-2xl aspect-[8.5/11] max-h-[85vh] max-w-[90vw] flex flex-col overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
+              <span className="text-sm font-medium text-gray-900 truncate">
+                {selectedResume?.file_name ?? selectedResume?.title}
+              </span>
+              <button
+                onClick={() => setExpanded(false)}
+                className="text-gray-500 hover:text-gray-800 cursor-pointer flex-shrink-0"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <iframe
+              src={`${previewUrl}#view=FitH&toolbar=0&navpanes=0&scrollbar=1`}
+              className="w-full flex-1 border-0"
+              title="Expanded resume preview"
+            />
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
