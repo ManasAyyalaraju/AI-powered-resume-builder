@@ -30,7 +30,13 @@ export function isJobPostingUrl(url: string): boolean {
   const { hostname, pathname, search } = new URL(url);
 
   if (hostname.includes('linkedin.com')) {
-    return pathname.startsWith('/jobs/view/') || pathname.includes('/jobs/collections/');
+    if (pathname.startsWith('/jobs/view/')) return true;
+    if (pathname.includes('/jobs/collections/')) return true;
+    // Job search/recommended pages keep the user on one URL and swap the
+    // right-hand detail panel via this query param instead of navigating -
+    // e.g. /jobs/search/?currentJobId=123 or /jobs/search-results/?currentJobId=123.
+    if (pathname.startsWith('/jobs/') && search.includes('currentJobId=')) return true;
+    return false;
   }
   if (hostname.includes('indeed.com')) {
     return pathname.includes('/viewjob') || search.includes('vjk=');

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './config';
+import { blobToDataUrl } from './data-url';
 
 export interface TailorRequest {
   pdfBlob: Blob;
@@ -13,21 +13,22 @@ export async function tailorResumePdf({
   jobDescription,
   resumeFormat,
 }: TailorRequest): Promise<Blob> {
-  const formData = new FormData();
-  formData.append('pdf', pdfBlob, fileName);
-  formData.append('jd_text', jobDescription);
-  formData.append('output', 'pdf');
-  formData.append('resume_format', resumeFormat);
+  // Routed through the background service worker - a direct fetch() here
+  // would run in the host page's execution context and get silently blocked
+  // by that page's CSP connect-src (see background.ts for details).
+  const pdfDataUrl = await blobToDataUrl(pdfBlob);
 
-  const response = await fetch(`${API_BASE_URL}/api/tailor/pdf`, {
-    method: 'POST',
-    body: formData,
+  const response = await chrome.runtime.sendMessage({
+    type: 'TAILOR_RESUME',
+    pdfDataUrl,
+    fileName,
+    jobDescription,
+    resumeFormat,
   });
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`Tailoring failed (${response.status}): ${text.slice(0, 300)}`);
+  if (!response?.ok) {
+    throw new Error(response?.error || 'Tailoring failed.');
   }
 
-  return response.blob();
+  return fetch(response.pdfDataUrl).then((r) => r.blob());
 }

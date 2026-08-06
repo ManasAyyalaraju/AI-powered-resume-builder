@@ -58,75 +58,75 @@ export default function FileUpload({ onFileSelect, selectedFile }: FileUploadPro
         <div
           {...getRootProps()}
           className={`
-            border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
-            transition-all duration-200 bg-white
-            ${isDragActive 
-              ? 'border-blue-600 bg-blue-50' 
-              : 'border-gray-300 hover:border-blue-500'
+            border border-dashed rounded-[4px] p-8 text-center cursor-pointer
+            transition-all duration-200 bg-[#fffcfc]
+            ${isDragActive
+              ? 'border-[#187fe7] bg-blue-50'
+              : 'border-[#504b4b] hover:border-[#187fe7]'
             }
             ${error ? 'border-red-500 bg-red-50' : ''}
           `}
         >
           <input {...getInputProps()} />
-          
-          <div className="flex flex-col items-center gap-4">
+
+          <div className="flex flex-col items-center gap-3">
             <div className={`
-              p-4 rounded-full
-              ${isDragActive 
-                ? 'bg-blue-100' 
-                : 'bg-gray-100'
+              p-3 rounded-full
+              ${isDragActive
+                ? 'bg-blue-100'
+                : 'bg-[#ebeaea]'
               }
             `}>
               <Upload className={`
-                w-8 h-8
-                ${isDragActive 
-                  ? 'text-blue-600' 
-                  : 'text-gray-600'
+                w-6 h-6
+                ${isDragActive
+                  ? 'text-[#187fe7]'
+                  : 'text-black'
                 }
               `} />
             </div>
-            
+
             <div>
-              <p className="text-lg font-medium text-gray-800 mb-1">
+              <p className="text-[12px] text-black tracking-[-0.24px] mb-1">
                 {isDragActive ? 'Drop your resume here' : 'Drag & drop your resume'}
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-[10px] font-light text-black tracking-[-0.2px]">
                 or click to browse
               </p>
             </div>
-            
-            <p className="text-xs text-gray-500">
-              PDF only, max 10MB
+
+            <p className="text-[10px] font-light text-black tracking-[-0.2px]">
+              PDF only
             </p>
           </div>
         </div>
       ) : (
-        <div className="border-2 border-green-500 bg-green-50 rounded-lg p-6">
+        <div className="border border-black bg-[#fffcfc] rounded-[4px] p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 flex-1">
-              <div className="p-2 bg-green-100 rounded">
-                <FileText className="w-6 h-6 text-green-600" />
+              <div className="p-2 bg-[#e7f2fd] rounded">
+                <FileText className="w-6 h-6 text-[#187fe7]" />
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <p className="font-medium text-gray-800 truncate">
+                  <p className="font-medium text-black truncate">
                     {selectedFile.name}
                   </p>
-                  <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-[#187fe7] flex-shrink-0" />
                 </div>
                 <p className="text-sm text-gray-600">
                   {formatFileSize(selectedFile.size)}
                 </p>
               </div>
             </div>
-            
+
             <button
               onClick={removeFile}
-              className="p-1 hover:bg-green-200 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 rounded transition-colors cursor-pointer"
               aria-label="Remove file"
             >
-              <X className="w-5 h-5 text-gray-600" />
+              <X className="w-5 h-5 text-black" />
             </button>
           </div>
         </div>

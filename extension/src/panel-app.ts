@@ -2,6 +2,7 @@ import type { User } from '@supabase/supabase-js';
 import { getSupabaseClient } from './lib/supabase-client';
 import { listBaseResumes, downloadBaseResume, uploadGeneratedResume, type BaseResumeRow } from './lib/resumes';
 import { tailorResumePdf } from './lib/api';
+import { blobToDataUrl } from './lib/data-url';
 import type { JobContext } from './lib/extract-jd';
 import { WEB_APP_URL } from './lib/config';
 
@@ -51,6 +52,7 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
   function renderHeader(): string {
     return `
       <div class="refactr-header">
+        <div class="refactr-logo"><span></span><span></span></div>
         <div class="refactr-brand">refactr</div>
         ${onClose ? '<button type="button" class="refactr-close" data-action="close">&times;</button>' : ''}
       </div>
@@ -113,13 +115,14 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
         <div class="refactr-empty">
           No saved resumes yet. Tailor or reformat a resume once on the refactr web app to save one here.
         </div>
+        ${renderAccountFooter()}
       `;
     }
 
     const options = state.resumes
       .map(
         (r) =>
-          `<option value="${r.id}" ${r.id === state.selectedResumeId ? 'selected' : ''}>${escapeHtml(r.title)}</option>`
+          `<option value="${r.id}" ${r.id === state.selectedResumeId ? 'selected' : ''}>${escapeHtml(r.file_name ?? r.title)}</option>`
       )
       .join('');
 
@@ -140,6 +143,16 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
         Tailor &amp; Download
       </button>
       ${!jobContext ? '<p class="refactr-error" style="margin-top:8px;">Could not read a job description on this page.</p>' : ''}
+      ${renderAccountFooter()}
+    `;
+  }
+
+  function renderAccountFooter(): string {
+    return `
+      <p class="refactr-footer-link" style="margin-top:14px;font-size:12px;color:#6b7280;">
+        Connected as ${escapeHtml(state.user?.email ?? '')} &middot;
+        <a class="refactr-link" data-action="sign-out">Switch account</a>
+      </p>
     `;
   }
 
@@ -168,6 +181,17 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
     container.querySelector('#refactr-resume')?.addEventListener('change', (e) => {
       state.selectedResumeId = (e.target as HTMLSelectElement).value;
     });
+    container.querySelector('[data-action="sign-out"]')?.addEventListener('click', handleSignOut);
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    state.user = null;
+    state.resumes = [];
+    state.selectedResumeId = null;
+    state.errorMessage = '';
+    state.screen = 'login';
+    render();
   }
 
   function handleLoginClick() {
@@ -262,15 +286,6 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
     // worker a data: URL (a plain string) it can pass to chrome.downloads.
     const dataUrl = await blobToDataUrl(blob);
     await chrome.runtime.sendMessage({ type: 'DOWNLOAD_FILE', url: dataUrl, filename });
-  }
-
-  function blobToDataUrl(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
   }
 
   function escapeHtml(text: string): string {
