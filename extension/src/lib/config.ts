@@ -5,5 +5,4 @@ export const SUPABASE_ANON_KEY =
 // Update to the deployed Render URL once available; falls back to local dev.
 export const API_BASE_URL = 'http://localhost:8000';
 
-// Update to the deployed web app URL once available; falls back to local dev.
-export const WEB_APP_URL = 'http://localhost:3000';
+export const WEB_APP_URL = 'https://ai-powered-resume-builder-peach.vercel.app';
