@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { CompatibilityReport } from './api';
 
 export interface BaseResumeRow {
   id: string;
@@ -53,8 +54,10 @@ export async function uploadGeneratedResume(
     jobUrl?: string | null;
     jobDescription?: string | null;
     resumeFormat: 'regular' | 'technical';
+    compatibility?: CompatibilityReport;
+    resumeSkills?: string[];
   }
-): Promise<void> {
+): Promise<{ id: string } | null> {
   try {
     const storagePath = `${userId}/${randomId()}.pdf`;
 
@@ -63,18 +66,32 @@ export async function uploadGeneratedResume(
       .upload(storagePath, params.pdfBlob, { contentType: 'application/pdf' });
     if (uploadError) throw uploadError;
 
-    const { error: insertError } = await supabase.from('generated_resumes').insert({
-      user_id: userId,
-      base_resume_id: params.baseResumeId,
-      job_title: params.jobTitle ?? null,
-      company: params.company ?? null,
-      job_url: params.jobUrl ?? null,
-      job_description_snapshot: params.jobDescription ?? null,
-      tailoring_options: { mode: 'tailor', resume_format: params.resumeFormat, source: 'extension' },
-      pdf_storage_path: storagePath,
-    });
+    const { data, error: insertError } = await supabase
+      .from('generated_resumes')
+      .insert({
+        user_id: userId,
+        base_resume_id: params.baseResumeId,
+        job_title: params.jobTitle ?? null,
+        company: params.company ?? null,
+        job_url: params.jobUrl ?? null,
+        job_description_snapshot: params.jobDescription ?? null,
+        tailoring_options: {
+          mode: 'tailor',
+          resume_format: params.resumeFormat,
+          source: 'extension',
+          score: params.compatibility?.score,
+          compatibility: params.compatibility,
+          resume_skills: params.resumeSkills,
+        },
+        pdf_storage_path: storagePath,
+      })
+      .select('id')
+      .single();
     if (insertError) throw insertError;
+
+    return data;
   } catch (err) {
     console.error('uploadGeneratedResume failed:', err);
+    return null;
   }
 }

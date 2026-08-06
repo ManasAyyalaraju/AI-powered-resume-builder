@@ -1,16 +1,28 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Avatar, { AVATAR_COUNT } from '@/components/Avatar';
 import { useAuth } from '@/lib/supabase/auth-context';
 import { createClient } from '@/lib/supabase/client';
-import { CircleUserRound, Pencil, Check, X } from 'lucide-react';
+import { Pencil, Check, X, Shuffle, LogOut } from 'lucide-react';
+
+function randomSeed(exclude?: number): number {
+  let next = Math.floor(Math.random() * AVATAR_COUNT);
+  if (exclude !== undefined && AVATAR_COUNT > 1) {
+    while (next === exclude) next = Math.floor(Math.random() * AVATAR_COUNT);
+  }
+  return next;
+}
 
 export default function ProfilePage() {
-  const { user, displayName, updateDisplayName } = useAuth();
+  const router = useRouter();
+  const { user, displayName, updateDisplayName, signOut } = useAuth();
   const supabase = createClient();
   const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [avatarSeed, setAvatarSeed] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -22,11 +34,19 @@ export default function ProfilePage() {
     if (!user) return;
     supabase
       .from('profiles')
-      .select('created_at')
+      .select('created_at, avatar_seed')
       .eq('id', user.id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         setCreatedAt(data?.created_at ?? null);
+        if (data?.avatar_seed !== null && data?.avatar_seed !== undefined) {
+          setAvatarSeed(data.avatar_seed);
+        } else {
+          // First visit - pick and persist a random avatar so it's stable from here on.
+          const seed = randomSeed();
+          setAvatarSeed(seed);
+          await supabase.from('profiles').update({ avatar_seed: seed }).eq('id', user.id);
+        }
         setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -39,6 +59,13 @@ export default function ProfilePage() {
         day: 'numeric',
       })
     : null;
+
+  const shuffleAvatar = async () => {
+    if (!user) return;
+    const seed = randomSeed(avatarSeed);
+    setAvatarSeed(seed);
+    await supabase.from('profiles').update({ avatar_seed: seed }).eq('id', user.id);
+  };
 
   const startEditing = () => {
     setNameInput(displayName || '');
@@ -63,93 +90,129 @@ export default function ProfilePage() {
     setIsEditing(false);
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+    router.refresh();
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
 
       <main className="flex-1 py-12 px-4">
-        <div className="container mx-auto max-w-2xl">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">My Profile</h1>
+        <div className="container mx-auto max-w-3xl">
+          <h1 className="font-bold text-[32px] sm:text-[48px] leading-[1.05] tracking-[-0.96px] text-black mb-8">
+            My Profile
+          </h1>
 
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <CircleUserRound className="w-9 h-9 text-blue-600" strokeWidth={1.5} />
+          <div className="bg-[#fffcfc] border border-black rounded-[4px] p-6 sm:p-8">
+            <div className="flex items-center justify-between gap-4 mb-2">
+              <div className="flex items-center gap-4">
+                <div className="relative shrink-0">
+                  <Avatar seed={avatarSeed} className="w-[72px] h-[72px]" />
+                  <button
+                    type="button"
+                    onClick={shuffleAvatar}
+                    aria-label="Shuffle avatar"
+                    title="Shuffle avatar"
+                    className="absolute -bottom-1 -right-1 w-6 h-6 flex items-center justify-center rounded-full bg-black text-white hover:bg-[#187fe7] transition-colors cursor-pointer"
+                  >
+                    <Shuffle className="w-3 h-3" />
+                  </button>
+                </div>
+                <div>
+                  <p className="font-bold text-[18px] tracking-[-0.36px] text-black">
+                    {loading ? '—' : displayName || 'No name set'}
+                  </p>
+                  <p className="text-[13px] tracking-[-0.26px] text-black">{user?.email}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-lg font-semibold text-gray-900">
-                  {displayName || 'No name set'}
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="shrink-0 flex items-center gap-2 bg-[#fffcfc] rounded-[14px] px-6 py-3.5 text-[16px] text-black hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign out
+              </button>
+            </div>
+
+            <div className="mt-4">
+              <div className="flex items-start justify-between border-t border-b border-black/[0.19] py-3 gap-4">
+                <p className="font-semibold text-[14px] tracking-[-0.28px] text-black">Name</p>
+                {isEditing ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      autoFocus
+                      disabled={isSaving}
+                      placeholder="Your name"
+                      className="max-w-[200px] px-2.5 py-1 border border-gray-300 rounded-lg text-[14px] text-black focus:ring-2 focus:ring-[#187fe7] focus:border-[#187fe7] outline-none disabled:opacity-50"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveName();
+                        if (e.key === 'Escape') cancelEditing();
+                      }}
+                    />
+                    <button
+                      onClick={saveName}
+                      disabled={isSaving}
+                      aria-label="Save name"
+                      className="p-1 rounded-lg text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={cancelEditing}
+                      disabled={isSaving}
+                      aria-label="Cancel"
+                      className="p-1 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[14px] tracking-[-0.28px] text-black">
+                      {displayName || 'Not set'}
+                    </span>
+                    <button
+                      onClick={startEditing}
+                      aria-label="Edit name"
+                      className="text-gray-400 hover:text-[#187fe7] transition-colors cursor-pointer"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {error && <p className="text-sm text-red-600 text-right pt-2">{error}</p>}
+
+              <div className="flex items-start justify-between border-b border-black/[0.19] py-3 gap-4">
+                <p className="font-semibold text-[14px] tracking-[-0.28px] text-black">Email</p>
+                <p className="text-[14px] tracking-[-0.28px] text-black text-right">{user?.email}</p>
+              </div>
+
+              <div className="flex items-start justify-between border-b border-black/[0.19] py-3 gap-4">
+                <p className="font-semibold text-[14px] tracking-[-0.28px] text-black">Member since</p>
+                <p className="text-[14px] tracking-[-0.28px] text-black text-right">
+                  {loading ? '—' : memberSince || 'Unknown'}
                 </p>
-                <p className="text-sm text-gray-500">{user?.email}</p>
               </div>
             </div>
 
-            <dl className="space-y-4">
-              <div className="flex items-center justify-between gap-4 border-t border-gray-100 pt-4">
-                <dt className="text-sm text-gray-500 shrink-0">Name</dt>
-                <dd className="flex-1 flex items-center justify-end gap-2">
-                  {isEditing ? (
-                    <>
-                      <input
-                        type="text"
-                        value={nameInput}
-                        onChange={(e) => setNameInput(e.target.value)}
-                        autoFocus
-                        disabled={isSaving}
-                        placeholder="Your name"
-                        className="flex-1 max-w-[220px] px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none disabled:opacity-50"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveName();
-                          if (e.key === 'Escape') cancelEditing();
-                        }}
-                      />
-                      <button
-                        onClick={saveName}
-                        disabled={isSaving}
-                        aria-label="Save name"
-                        className="p-1.5 rounded-lg text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50 cursor-pointer"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={cancelEditing}
-                        disabled={isSaving}
-                        aria-label="Cancel"
-                        className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-sm font-medium text-gray-900">
-                        {displayName || 'Not set'}
-                      </span>
-                      <button
-                        onClick={startEditing}
-                        aria-label="Edit name"
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
-                </dd>
-              </div>
-
-              {error && <p className="text-sm text-red-600 text-right">{error}</p>}
-
-              <div className="flex justify-between border-t border-gray-100 pt-4">
-                <dt className="text-sm text-gray-500">Email</dt>
-                <dd className="text-sm font-medium text-gray-900">{user?.email}</dd>
-              </div>
-              <div className="flex justify-between border-t border-gray-100 pt-4">
-                <dt className="text-sm text-gray-500">Member since</dt>
-                <dd className="text-sm font-medium text-gray-900">
-                  {loading ? '—' : memberSince || 'Unknown'}
-                </dd>
-              </div>
-            </dl>
+            <div className="flex justify-end mt-5">
+              <button
+                type="button"
+                title="Contact support to delete your account"
+                className="bg-[#fb0000]/[0.17] text-[#fb0000] rounded-[14px] px-5 py-2.5 text-[14px] hover:bg-[#fb0000]/25 transition-colors cursor-pointer"
+              >
+                Delete Account
+              </button>
+            </div>
           </div>
         </div>
       </main>

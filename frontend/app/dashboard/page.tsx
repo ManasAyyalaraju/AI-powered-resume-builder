@@ -7,8 +7,10 @@ import Footer from '@/components/Footer';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAuth } from '@/lib/supabase/auth-context';
 import { createClient } from '@/lib/supabase/client';
-import { listBaseResumes, downloadBaseResume, BaseResumeRow } from '@/lib/supabase/resumes';
+import { listBaseResumes, downloadBaseResume, listGeneratedResumes, BaseResumeRow, GeneratedResumeRow } from '@/lib/supabase/resumes';
 import { downloadPDF } from '@/lib/api';
+import DashboardStats from '@/components/DashboardStats';
+import SkillsInsights from '@/components/SkillsInsights';
 import { Plus, Download, ChevronDown, X } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -20,6 +22,8 @@ export default function DashboardPage() {
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [generatedResumes, setGeneratedResumes] = useState<GeneratedResumeRow[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -27,6 +31,10 @@ export default function DashboardPage() {
       setResumes(rows);
       setSelectedResumeId(rows[0]?.id ?? null);
       setLoading(false);
+    });
+    listGeneratedResumes(supabase, user.id).then((rows) => {
+      setGeneratedResumes(rows);
+      setStatsLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
@@ -78,13 +86,21 @@ export default function DashboardPage() {
             <h1 className="font-bold text-[28px] sm:text-[36px] md:text-[44px] lg:text-[48px] leading-[1.05] tracking-[-0.96px] text-black">
               Resume Board
             </h1>
-            <Link
-              href="/resumes/new"
-              className="inline-flex items-center gap-2 bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors flex-shrink-0 self-start"
-            >
-              Add New Resume
-              <Plus className="w-4 h-4" />
-            </Link>
+            <div className="flex items-center gap-3 flex-shrink-0 self-start">
+              <Link
+                href="/tailored"
+                className="inline-flex items-center gap-2 text-black font-medium text-[16px] px-6 py-3.5 rounded-[14px] border border-black hover:bg-black/5 transition-colors"
+              >
+                Tailored History
+              </Link>
+              <Link
+                href="/resumes/new"
+                className="inline-flex items-center gap-2 bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors"
+              >
+                Add New Resume
+                <Plus className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-8">
@@ -156,15 +172,11 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="bg-[#fffcfc] border border-black rounded h-[155px] sm:h-[185px]" />
+              <SkillsInsights rows={generatedResumes} loading={statsLoading} />
             </div>
 
-            {/* Right: reserved for future work */}
-            <div className="flex-1 min-w-0 bg-[#fffcfc] border border-black rounded flex flex-col min-h-[260px] sm:min-h-[400px] lg:min-h-[602px]">
-              <div className="border-b border-black px-6 flex items-center h-[50px] sm:h-[58px] flex-shrink-0">
-                <h2 className="text-[20px] font-semibold text-black">Dashboard</h2>
-              </div>
-            </div>
+            {/* Right: application stats */}
+            <DashboardStats rows={generatedResumes} baseResumeCount={resumes.length} loading={statsLoading} />
           </div>
         </div>
       </main>

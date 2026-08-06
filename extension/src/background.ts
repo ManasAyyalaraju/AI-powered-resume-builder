@@ -38,25 +38,49 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
       try {
         const pdfBlob = await fetch(message.pdfDataUrl).then((r) => r.blob());
 
-        const formData = new FormData();
-        formData.append('pdf', pdfBlob, message.fileName);
-        formData.append('jd_text', message.jobDescription);
-        formData.append('output', 'pdf');
-        formData.append('resume_format', message.resumeFormat);
+        const buildFormData = (output: 'json' | 'pdf') => {
+          const formData = new FormData();
+          formData.append('pdf', pdfBlob, message.fileName);
+          formData.append('jd_text', message.jobDescription);
+          formData.append('output', output);
+          formData.append('resume_format', message.resumeFormat);
+          return formData;
+        };
 
-        const response = await fetch(`${API_BASE_URL}/api/tailor/pdf`, {
+        // Fetch the structured result first so we can persist the full
+        // compatibility breakdown alongside the tailored PDF, then fetch
+        // the PDF itself for download.
+        const jsonResponse = await fetch(`${API_BASE_URL}/api/tailor/pdf`, {
           method: 'POST',
-          body: formData,
+          body: buildFormData('json'),
         });
 
-        if (!response.ok) {
-          const text = await response.text().catch(() => '');
-          sendResponse({ ok: false, error: `Tailoring failed (${response.status}): ${text.slice(0, 300)}` });
+        if (!jsonResponse.ok) {
+          const text = await jsonResponse.text().catch(() => '');
+          sendResponse({ ok: false, error: `Tailoring failed (${jsonResponse.status}): ${text.slice(0, 300)}` });
           return;
         }
 
-        const resultDataUrl = await blobToDataUrl(await response.blob());
-        sendResponse({ ok: true, pdfDataUrl: resultDataUrl });
+        const jsonResult = await jsonResponse.json();
+
+        const pdfResponse = await fetch(`${API_BASE_URL}/api/tailor/pdf`, {
+          method: 'POST',
+          body: buildFormData('pdf'),
+        });
+
+        if (!pdfResponse.ok) {
+          const text = await pdfResponse.text().catch(() => '');
+          sendResponse({ ok: false, error: `Tailoring failed (${pdfResponse.status}): ${text.slice(0, 300)}` });
+          return;
+        }
+
+        const resultDataUrl = await blobToDataUrl(await pdfResponse.blob());
+        sendResponse({
+          ok: true,
+          pdfDataUrl: resultDataUrl,
+          compatibility: jsonResult.compatibility,
+          resumeSkills: jsonResult.resume?.skills,
+        });
       } catch (err) {
         sendResponse({ ok: false, error: err instanceof Error ? err.message : 'Tailoring failed.' });
       }

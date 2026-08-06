@@ -223,6 +223,15 @@
   color: #000000;
 }
 
+.refactr-score {
+  font-size: 15px !important;
+}
+
+.refactr-score strong {
+  font-size: 22px;
+  color: #187fe7;
+}
+
 .refactr-spinner {
   width: 28px;
   height: 28px;

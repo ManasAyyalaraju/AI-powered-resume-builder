@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
-const PROTECTED_PATHS = ['/tailor', '/results', '/dashboard', '/profile', '/extension/connect', '/resumes'];
+const PROTECTED_PATHS = ['/tailor', '/tailored', '/results', '/dashboard', '/profile', '/extension/connect', '/resumes'];
 const AUTH_PATHS = ['/login', '/signup'];
 
 export async function proxy(request: NextRequest) {
@@ -35,6 +35,7 @@ export const config = {
   matcher: [
     '/',
     '/tailor/:path*',
+    '/tailored/:path*',
     '/results/:path*',
     '/dashboard/:path*',
     '/profile/:path*',

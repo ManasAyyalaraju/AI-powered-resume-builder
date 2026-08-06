@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { CompatibilityReport } from '@/types/resume';
 
 export interface BaseResumeRow {
   id: string;
@@ -15,6 +16,21 @@ export interface TailoringOptions {
   mode: 'tailor' | 'reformat';
   score?: number;
   resume_format?: 'regular' | 'technical';
+  compatibility?: CompatibilityReport;
+  resume_skills?: string[];
+}
+
+export interface GeneratedResumeRow {
+  id: string;
+  user_id: string;
+  base_resume_id: string | null;
+  job_title: string | null;
+  company: string | null;
+  job_url: string | null;
+  job_description_snapshot: string | null;
+  tailoring_options: TailoringOptions;
+  pdf_storage_path: string;
+  created_at: string;
 }
 
 function randomId(): string {
@@ -122,6 +138,56 @@ export async function downloadBaseResume(
 
   if (error) {
     console.error('downloadBaseResume failed:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function listGeneratedResumes(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<GeneratedResumeRow[]> {
+  const { data, error } = await supabase
+    .from('generated_resumes')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('listGeneratedResumes failed:', error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function getGeneratedResume(
+  supabase: SupabaseClient,
+  id: string
+): Promise<GeneratedResumeRow | null> {
+  const { data, error } = await supabase
+    .from('generated_resumes')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('getGeneratedResume failed:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function downloadGeneratedResume(
+  supabase: SupabaseClient,
+  storagePath: string
+): Promise<Blob | null> {
+  const { data, error } = await supabase.storage.from('generated-resumes').download(storagePath);
+
+  if (error) {
+    console.error('downloadGeneratedResume failed:', error);
     return null;
   }
 

@@ -21,6 +21,8 @@ interface State {
   selectedResumeId: string | null;
   resumeFormat: 'regular' | 'technical';
   errorMessage: string;
+  lastScore: number | null;
+  lastResultId: string | null;
 }
 
 const POLL_INTERVAL_MS = 1500;
@@ -37,6 +39,8 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
     selectedResumeId: null,
     resumeFormat: 'regular',
     errorMessage: '',
+    lastScore: null,
+    lastResultId: null,
   };
 
   function render() {
@@ -78,7 +82,24 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
       case 'tailoring':
         return `<div class="refactr-status"><div class="refactr-spinner"></div><p>Tailoring your resume...</p></div>`;
       case 'done':
-        return `<div class="refactr-status"><p>&#10003; Tailored resume downloaded.</p><button type="button" class="refactr-btn" data-action="reset">Tailor another</button></div>`;
+        return `
+          <div class="refactr-status">
+            <p>&#10003; Tailored resume downloaded.</p>
+            ${
+              state.lastScore !== null
+                ? `<p class="refactr-score"><strong>${state.lastScore}</strong> match score</p>`
+                : ''
+            }
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+              ${
+                state.lastResultId
+                  ? `<button type="button" class="refactr-btn" data-action="view-details">View Detailed Results</button>`
+                  : ''
+              }
+              <button type="button" class="refactr-btn refactr-btn-secondary" data-action="reset">Tailor another</button>
+            </div>
+          </div>
+        `;
       case 'error':
         return `
           <div class="refactr-status">
@@ -169,8 +190,15 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
     });
     container.querySelector('[data-action="tailor"]')?.addEventListener('click', handleTailor);
     container.querySelector('[data-action="reset"]')?.addEventListener('click', () => {
+      state.lastScore = null;
+      state.lastResultId = null;
       state.screen = 'picker';
       render();
+    });
+    container.querySelector('[data-action="view-details"]')?.addEventListener('click', () => {
+      if (state.lastResultId) {
+        window.open(`${WEB_APP_URL}/tailored/${state.lastResultId}`, '_blank');
+      }
     });
     container.querySelectorAll('[data-format]').forEach((el) => {
       el.addEventListener('click', () => {
@@ -252,25 +280,29 @@ export function mountPanelApp({ container, jobContext, onClose }: PanelAppOption
       const pdfBlob = await downloadBaseResume(supabase, resume.storage_path);
       if (!pdfBlob) throw new Error('Could not load that saved resume file.');
 
-      const tailoredBlob = await tailorResumePdf({
+      const tailorResult = await tailorResumePdf({
         pdfBlob,
         fileName: resume.file_name ?? resume.title,
         jobDescription: jobContext.description,
         resumeFormat: state.resumeFormat,
       });
 
-      await downloadBlob(tailoredBlob, 'tailored_resume.pdf');
+      await downloadBlob(tailorResult.pdfBlob, 'tailored_resume.pdf');
 
-      uploadGeneratedResume(supabase, state.user.id, {
+      const saved = await uploadGeneratedResume(supabase, state.user.id, {
         baseResumeId: resume.id,
-        pdfBlob: tailoredBlob,
+        pdfBlob: tailorResult.pdfBlob,
         jobTitle: jobContext.title,
         company: jobContext.company,
         jobUrl: window.location?.href,
         jobDescription: jobContext.description,
         resumeFormat: state.resumeFormat,
+        compatibility: tailorResult.compatibility,
+        resumeSkills: tailorResult.resumeSkills,
       });
 
+      state.lastScore = tailorResult.compatibility?.score ?? null;
+      state.lastResultId = saved?.id ?? null;
       state.screen = 'done';
       render();
     } catch (err) {

@@ -7,12 +7,29 @@ export interface TailorRequest {
   resumeFormat: 'regular' | 'technical';
 }
 
+export interface CompatibilityReport {
+  score: number;
+  must_coverage: number;
+  nice_coverage: number;
+  matched_must_have: string[];
+  matched_nice_to_have: string[];
+  missing_must_have: string[];
+  missing_nice_to_have: string[];
+  resume_skill_hits: string[];
+}
+
+export interface TailorResult {
+  pdfBlob: Blob;
+  compatibility?: CompatibilityReport;
+  resumeSkills?: string[];
+}
+
 export async function tailorResumePdf({
   pdfBlob,
   fileName,
   jobDescription,
   resumeFormat,
-}: TailorRequest): Promise<Blob> {
+}: TailorRequest): Promise<TailorResult> {
   // Routed through the background service worker - a direct fetch() here
   // would run in the host page's execution context and get silently blocked
   // by that page's CSP connect-src (see background.ts for details).
@@ -30,5 +47,10 @@ export async function tailorResumePdf({
     throw new Error(response?.error || 'Tailoring failed.');
   }
 
-  return fetch(response.pdfDataUrl).then((r) => r.blob());
+  const tailoredBlob = await fetch(response.pdfDataUrl).then((r) => r.blob());
+  return {
+    pdfBlob: tailoredBlob,
+    compatibility: response.compatibility,
+    resumeSkills: response.resumeSkills,
+  };
 }

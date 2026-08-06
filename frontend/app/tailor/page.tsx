@@ -138,6 +138,8 @@ function TailorPageInner() {
           mode: 'tailor',
           score: result.compatibility?.score,
           resume_format: resumeFormat,
+          compatibility: result.compatibility,
+          resume_skills: result.resume?.skills,
         },
       });
 
