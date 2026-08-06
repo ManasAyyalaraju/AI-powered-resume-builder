@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "refactr",
+  "version": "0.1.0",
+  "description": "Automatically tailor your resume for the job posting you're viewing.",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsOU7fWrO79+IktaDdIS65O7vMX/Lc1N5HHThBkXWaOLWsuTvTQIIGSwzdxyYkYajeOpBngRpIQI/9jLXYSYlpB2rEIrd/A3EcL85SA/LHRi6RxeT5jZ+lRrVvEAGUIIyyCD2DB1GplFpGgP4y62yXNKnI829pjSHzf9X1I+jwfWKbvRl6MUm5cUODV+NE30YnXZwy6PaVQW+ZJaCKU0tbSm+5A43DfGbY3AG3oSEDykuDgd1isDaldjjQycIApwe5qRhvKE0/z7SbuKfwNvOroNGBc4+HRbn1du1TRV2gFWXwJ8G6X1DcVOHLf56jd5rCsVEdeMBPZrnmqHwoN5oaQIDAQAB",
+  "action": {
+    "default_title": "refactr",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/jobs/*",
+        "https://www.indeed.com/*",
+        "https://*.glassdoor.com/*",
+        "https://joinhandshake.com/*",
+        "https://*.joinhandshake.com/*"
+      ],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["panel.css"],
+      "matches": [
+        "https://www.linkedin.com/*",
+        "https://www.indeed.com/*",
+        "https://*.glassdoor.com/*",
+        "https://joinhandshake.com/*",
+        "https://*.joinhandshake.com/*"
+      ]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:3000/*",
+      "https://ai-powered-resume-builder-peach.vercel.app/*"
+    ]
+  },
+  "permissions": ["storage", "downloads", "scripting", "activeTab"],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://www.indeed.com/*",
+    "https://*.glassdoor.com/*",
+    "https://joinhandshake.com/*",
+    "https://*.joinhandshake.com/*",
+    "http://localhost:8000/*",
+    "https://*.onrender.com/*"
+  ]
+}

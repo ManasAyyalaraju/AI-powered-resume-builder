@@ -1,0 +1,278 @@
+.refactr-panel {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  width: 480px;
+  max-width: calc(100vw - 40px);
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+  border: 1px solid #000000;
+  color: #000000;
+  overflow: hidden;
+}
+
+.refactr-panel * {
+  box-sizing: border-box;
+}
+
+.refactr-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 22px;
+  border-bottom: 1px solid #000000;
+  position: relative;
+}
+
+.refactr-logo {
+  position: relative;
+  width: 26px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.refactr-logo span {
+  position: absolute;
+  width: 18px;
+  height: 16px;
+  border: 2px solid #000000;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.refactr-logo span:first-child {
+  left: 0;
+  top: 0;
+}
+
+.refactr-logo span:last-child {
+  left: 6px;
+  top: 5px;
+}
+
+.refactr-brand {
+  font-weight: 700;
+  font-size: 24px;
+  color: #000000;
+  line-height: 1;
+}
+
+.refactr-close {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #000000;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px;
+}
+
+.refactr-close:hover {
+  opacity: 0.6;
+}
+
+.refactr-body {
+  padding: 22px 22px 24px;
+}
+
+.refactr-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.refactr-prompt p {
+  margin: 0;
+  font-size: 13px;
+  color: #374151;
+  flex: 1;
+}
+
+.refactr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 14px;
+  border: none;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #187fe7;
+  color: #ffffff;
+  box-shadow: 0 4px 2px rgba(0, 0, 0, 0.25);
+  transition: background-color 0.15s ease;
+}
+
+.refactr-btn:hover {
+  background: #146bc7;
+}
+
+.refactr-btn:disabled {
+  background: #d1d5db;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.refactr-btn-secondary {
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid #000000;
+  box-shadow: none;
+}
+
+.refactr-btn-secondary:hover {
+  background: #f5f5f5;
+}
+
+.refactr-field {
+  margin-bottom: 18px;
+}
+
+.refactr-field label {
+  display: block;
+  font-size: 18px;
+  font-weight: 300;
+  color: #000000;
+  margin-bottom: 8px;
+}
+
+.refactr-field input,
+.refactr-field select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #000000;
+  font-size: 15px;
+  color: #000000;
+  background: #ffffff;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.refactr-field input:focus,
+.refactr-field select:focus {
+  outline: none;
+  border-color: #187fe7;
+}
+
+.refactr-job-meta {
+  background: #ebeaea;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+
+.refactr-job-meta p {
+  margin: 0;
+  font-size: 14px;
+  color: #000000;
+}
+
+.refactr-job-meta .refactr-job-title {
+  font-weight: 600;
+  color: #000000;
+  font-size: 17px;
+}
+
+.refactr-job-meta .refactr-job-title + p {
+  margin-top: 4px;
+}
+
+.refactr-format-options {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.refactr-format-option {
+  flex: 1;
+  padding: 13px 10px;
+  border-radius: 10px;
+  border: 1px solid #000000;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  color: #000000;
+  background: #ffffff;
+}
+
+.refactr-format-option.selected {
+  border-color: #1a1a1a;
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+.refactr-status {
+  text-align: center;
+  padding: 24px 8px;
+}
+
+.refactr-status p {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: #000000;
+}
+
+.refactr-score {
+  font-size: 15px !important;
+}
+
+.refactr-score strong {
+  font-size: 22px;
+  color: #187fe7;
+}
+
+.refactr-spinner {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto;
+  border: 3px solid #dbeafe;
+  border-top-color: #187fe7;
+  border-radius: 50%;
+  animation: refactr-spin 0.8s linear infinite;
+}
+
+@keyframes refactr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.refactr-error {
+  color: #dc2626;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.refactr-link {
+  color: #187fe7;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.refactr-link:hover {
+  text-decoration: underline;
+}
+
+.refactr-footer-link {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.refactr-empty {
+  text-align: center;
+  padding: 12px 4px;
+  font-size: 14px;
+  color: #374151;
+}
