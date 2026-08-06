@@ -59,3 +59,5 @@ card. That's it — no re-cloning, no re-downloading.
 
 Found a bug or something confusing? Let the person who sent you this know — that's exactly what
 this testing round is for.
+
+<!-- test commit: verifying Vercel Ignored Build Step skips this branch -->
