@@ -105,6 +105,9 @@ Rules:
 - Extract ONLY what appears in the text. Omit a field (leave it empty) if it's missing.
 - Do NOT classify education requirements, years of experience, tenure, personality traits (self-starter, motivated, organized), or generic ability/communication/customer-service/vendor interaction statements as skills. Those may remain as keywords/responsibilities if present.
 - Extract skills from ANY domain (tech, healthcare, finance, marketing, etc.) but keep them concrete.
+- **Pull skill names out of qualifying phrases, don't discard the whole sentence.** A concrete tool/technology/methodology named inside phrases like "working knowledge of X", "exposure to Y", "understanding of Z", "familiarity with W", "experience with V" is still a real skill to extract - only the qualifying language is soft, not the named skill itself. A single sentence often contains skills at BOTH priority levels: e.g. "Working knowledge of SQL; exposure to Python, Alteryx, and Excel is a plus" must produce must_have_skills: ["SQL"] AND nice_to_have_skills: ["Python", "Alteryx", "Excel"] from that one sentence, not just one or the other.
+- Similarly, "Basic understanding of data validation, reconciliation, and data quality practices" should extract "data validation", "reconciliation", and "data quality" as concrete methodologies - the word "basic" softens the requirement level, it doesn't disqualify the terms as skills.
+- When in doubt about a specific named tool, technology, or methodology, include it rather than omit it - err toward extracting too much concrete detail rather than too little.
 
 TASK 2 - Classify the role's industry and sub-domain:
 
