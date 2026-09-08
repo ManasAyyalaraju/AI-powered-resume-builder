@@ -68,6 +68,12 @@ class _JDWithDomain(BaseModel):
 # incorrectly share a domain classification).
 _jd_cache: dict = {}
 
+# Up to this many extra attempts (beyond the first) while extraction stays
+# suspiciously sparse on a substantive JD. Each is an independent LLM sample,
+# so this bounds cost/latency while reducing - not eliminating - the odds
+# every attempt lands on an unlucky under-extraction.
+MAX_EXTRACTION_RETRIES = 2
+
 
 def _cache_key(text: str) -> str:
     normalized = " ".join(text.split()).strip().lower()
@@ -206,25 +212,28 @@ JOB DESCRIPTION TEXT:
 
     parsed = await _call_and_parse(prompt)
     job_fields = _clean_job_fields(parsed)
+    total = len(job_fields["must_have_skills"]) + len(job_fields["nice_to_have_skills"])
 
     # temperature=0 reduces but doesn't eliminate run-to-run variance - on a
     # JD long enough to obviously contain several concrete skills, a result
     # with fewer than 2 total extracted is more likely an unlucky sample than
-    # a genuinely skill-less posting. One bounded retry, not cached unless it
-    # actually helps, keeps this from permanently caching a bad sample.
-    total_extracted = len(job_fields["must_have_skills"]) + len(job_fields["nice_to_have_skills"])
-    if total_extracted < 2 and len(text) > 200:
-        retry_prompt = prompt + (
-            "\n\nNOTE: A previous pass over this same text under-extracted skills. "
-            "Re-read carefully for any concrete tool, technology, or methodology named "
-            "anywhere in the text, including inside qualifying phrases - do not return "
-            "empty or near-empty skill lists for a substantive job description."
-        )
-        retry_parsed = await _call_and_parse(retry_prompt)
-        retry_fields = _clean_job_fields(retry_parsed)
-        retry_total = len(retry_fields["must_have_skills"]) + len(retry_fields["nice_to_have_skills"])
-        if retry_total > total_extracted:
-            parsed, job_fields = retry_parsed, retry_fields
+    # a genuinely skill-less posting. Retry (each an independent sample) while
+    # it stays sparse, keeping whichever attempt did best. Short JDs never
+    # enter this loop - a sparse result there is plausibly just correct.
+    retry_prompt = prompt + (
+        "\n\nNOTE: A previous pass over this same text under-extracted skills. "
+        "Re-read carefully for any concrete tool, technology, or methodology named "
+        "anywhere in the text, including inside qualifying phrases - do not return "
+        "empty or near-empty skill lists for a substantive job description."
+    )
+    retries = 0
+    while total < 2 and len(text) > 200 and retries < MAX_EXTRACTION_RETRIES:
+        retries += 1
+        candidate_parsed = await _call_and_parse(retry_prompt)
+        candidate_fields = _clean_job_fields(candidate_parsed)
+        candidate_total = len(candidate_fields["must_have_skills"]) + len(candidate_fields["nice_to_have_skills"])
+        if candidate_total > total:
+            parsed, job_fields, total = candidate_parsed, candidate_fields, candidate_total
 
     # raw_text is populated from the input directly rather than asked of the
     # model - there's no reason to spend output tokens/latency having it copy
@@ -238,5 +247,12 @@ JOB DESCRIPTION TEXT:
     }
 
     result = (jd_obj, domain_info)
+
+    # Don't let a result that's still sparse after exhausting retries get
+    # stuck in the cache - the next request against this same JD text gets a
+    # fresh shot instead of permanently inheriting a bad sample.
+    still_sparse = total < 2 and len(text) > 200
+    if still_sparse:
+        return result
     _jd_cache[key] = result
     return result
