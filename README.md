@@ -11,7 +11,7 @@ Upload a resume once. Tailor it against a job description or reformat it into a 
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-412991?logo=openai&logoColor=white)](https://platform.openai.com/)
 
-**Live app:** [ai-powered-resume-builder-peach.vercel.app](https://ai-powered-resume-builder-peach.vercel.app)
+**Live app:** [refactrapp.com](https://refactrapp.com)
 
 ---
 
