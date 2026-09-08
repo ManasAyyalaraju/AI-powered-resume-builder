@@ -24,12 +24,18 @@ function isExtensionContextValid(): boolean {
   }
 }
 
+const MAX_EXTRACTION_ATTEMPTS = 4;
+
 async function tryShowPrompt(attempt = 0) {
   if (dismissedForThisPage || hostEl) return;
 
-  const jobContext = extractJobContext();
+  const isLastAttempt = attempt >= MAX_EXTRACTION_ATTEMPTS;
+  // Only let the last attempt fall back to the generic "biggest text block"
+  // heuristic - see extractJobContext for why an earlier fallback risks
+  // permanently locking onto page chrome instead of the real description.
+  const jobContext = extractJobContext(window.location.href, { allowGenericFallback: isLastAttempt });
 
-  if (!jobContext && attempt < 4) {
+  if (!jobContext && !isLastAttempt) {
     // LinkedIn and similar SPAs render the description asynchronously.
     setTimeout(() => tryShowPrompt(attempt + 1), 1000);
     return;

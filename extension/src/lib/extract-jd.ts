@@ -61,6 +61,13 @@ function firstMatchText(selectors: string[]): string | null {
 
 function extractLinkedIn(): JobContext {
   const description = firstMatchText([
+    // LinkedIn's newer "SDUI" (server-driven UI) markup tags this section
+    // with a semantic data attribute rather than a class name - the class
+    // names below it are auto-generated per-deploy and go stale quickly
+    // (confirmed: all four previously matched nothing on current LinkedIn).
+    // Prefer the semantic attribute; keep the old selectors as fallbacks in
+    // case LinkedIn serves a different variant.
+    '[data-sdui-component*="aboutTheJob"]',
     '.jobs-description__content',
     '.jobs-box__html-content',
     '#job-details',
@@ -135,8 +142,17 @@ function extractGeneric(): JobContext {
   };
 }
 
-export function extractJobContext(url: string = window.location.href): JobContext | null {
+export function extractJobContext(
+  url: string = window.location.href,
+  options: { allowGenericFallback?: boolean } = {}
+): JobContext | null {
+  const { allowGenericFallback = true } = options;
   const site = detectSite(url);
+
+  if (site === 'unknown') {
+    const generic = extractGeneric();
+    return generic.description ? generic : null;
+  }
 
   const context =
     site === 'linkedin'
@@ -145,18 +161,24 @@ export function extractJobContext(url: string = window.location.href): JobContex
         ? extractIndeed()
         : site === 'glassdoor'
           ? extractGlassdoor()
-          : site === 'handshake'
-            ? extractHandshake()
-            : extractGeneric();
+          : extractHandshake();
 
-  if (!context.description || context.description.length < 100) {
-    // Not enough signal to be confident this is a real job description yet
-    // (page may still be loading, or extraction missed).
-    const fallback = extractGeneric();
-    if (fallback.description.length > context.description.length) {
-      return fallback;
-    }
+  if (context.description && context.description.length >= 100) {
+    return context;
   }
 
-  return context.description ? context : null;
+  // The site-specific selectors came up short - either genuinely stale, or
+  // (just as likely on an SPA like LinkedIn) the real content just hasn't
+  // rendered yet. Only fall back to the generic "biggest text block on the
+  // page" heuristic when explicitly allowed (the caller's last retry) -
+  // trying it too early risks permanently locking onto unrelated page chrome
+  // (nav/footer text often renders before the job description does), since
+  // any non-null result here stops the caller's retry loop for good.
+  if (!allowGenericFallback) {
+    return null;
+  }
+
+  const fallback = extractGeneric();
+  const best = fallback.description.length > (context.description?.length ?? 0) ? fallback : context;
+  return best.description ? best : null;
 }
