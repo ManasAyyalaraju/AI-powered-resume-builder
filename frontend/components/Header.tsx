@@ -33,7 +33,7 @@ export default function Header() {
                     href="/signup"
                     className="inline-flex items-center justify-center bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors"
                   >
-                    Get Started
+                    Sign Up
                   </Link>
                 </>
               )

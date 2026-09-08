@@ -53,14 +53,22 @@ export default function Home() {
                 Tailor your resume for each job
               </h1>
               <p className="text-[20px] md:text-[24px] text-black/75">
-                Boost your chances of landing your dream job!!
+                Install the Chrome extension and tailor your resume right from the job posting.
               </p>
-              <Link
-                href="/signup"
-                className="inline-flex items-center justify-center bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors"
-              >
-                Get Started
-              </Link>
+              <div className="flex flex-col items-center gap-3">
+                <Link
+                  href="/extension"
+                  className="inline-flex items-center justify-center bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors"
+                >
+                  Get the Extension
+                </Link>
+                <Link
+                  href="/signup"
+                  className="text-[15px] text-black/60 hover:text-[#187fe7] transition-colors"
+                >
+                  or use refactr on the web &rarr;
+                </Link>
+              </div>
             </div>
 
             <LandingProductVisual />
@@ -161,12 +169,20 @@ export default function Home() {
             <p className="text-[20px] md:text-[24px] font-medium text-black">
               Start Tailoring NOW !!!
             </p>
-            <Link
-              href="/signup"
-              className="inline-flex items-center justify-center bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors"
-            >
-              Get Started
-            </Link>
+            <div className="flex flex-col items-center gap-3">
+              <Link
+                href="/extension"
+                className="inline-flex items-center justify-center bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors"
+              >
+                Get the Extension
+              </Link>
+              <Link
+                href="/signup"
+                className="text-[15px] text-black/60 hover:text-[#187fe7] transition-colors"
+              >
+                or use refactr on the web &rarr;
+              </Link>
+            </div>
           </div>
         </section>
       </main>
