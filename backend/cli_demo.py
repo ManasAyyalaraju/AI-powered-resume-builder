@@ -1,13 +1,14 @@
+import asyncio
 import json
 from pathlib import Path
 
 from models.resume_models import Resume
-from services.job_parser import parse_job_description
+from services.job_parser import parse_job_description_from_text
 from services.tailor_engine import tailor_resume
 from services.resume_formatter import format_resume_text
 
 
-def main():
+async def main():
     # Paths
     project_root = Path(__file__).resolve().parents[1]
     data_dir = project_root / "data"
@@ -24,8 +25,8 @@ def main():
         jd_text = f.read()
 
     # Parse & tailor
-    jd = parse_job_description(jd_text)
-    tailored_resume = tailor_resume(resume, jd)
+    jd, domain_info = await parse_job_description_from_text(jd_text)
+    tailored_resume = await tailor_resume(resume, jd, domain_info)
 
     # Print JSON
     print("\n=== Tailored Resume JSON ===\n")
@@ -38,4 +39,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

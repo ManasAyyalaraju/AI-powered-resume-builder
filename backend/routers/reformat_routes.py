@@ -1,12 +1,21 @@
+import json
+import logging
+import os
+import tempfile
+from typing import Dict
+
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from openai import AuthenticationError
 
 from core.config import settings
+from core.timing import timed_stage
 from services.pdf_resume_parser import parse_pdf_resume_to_json
 from services.pdf_writer import render_resume_pdf
 from services.reformat_engine import reformat_resume
 from services.tailor_engine import ensure_technical_skills
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Reformatter"])
 
@@ -25,12 +34,19 @@ async def reformat_resume_from_pdf(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    temp_path = f"/tmp/{pdf.filename}"
-    with open(temp_path, "wb") as f:
+    # Unique per-request temp filename - reusing pdf.filename directly let
+    # two concurrent requests uploading a common name (e.g. "resume.pdf")
+    # collide on the same path.
+    suffix = os.path.splitext(pdf.filename or "")[1] or ".pdf"
+    fd, temp_path = tempfile.mkstemp(suffix=suffix)
+    with os.fdopen(fd, "wb") as f:
         f.write(await pdf.read())
 
+    timings: Dict[str, int] = {}
+
     try:
-        resume = parse_pdf_resume_to_json(temp_path)
+        with timed_stage("parse_resume", timings):
+            resume = await parse_pdf_resume_to_json(temp_path)
 
         # Normalize skills from computer/technical skills strings into list
         if getattr(resume.additional_info, "computer_skills", None):
@@ -55,16 +71,21 @@ async def reformat_resume_from_pdf(
         # once the extra section shows up at render time.
         use_technical_skills = resume_format.lower() == "technical"
         if use_technical_skills:
-            resume = ensure_technical_skills(resume)
+            with timed_stage("categorize_skills", timings):
+                resume = await ensure_technical_skills(resume)
 
-        reformatted = reformat_resume(resume)
-        pdf_bytes = render_resume_pdf(reformatted, use_technical_skills=use_technical_skills)
+        with timed_stage("reformat", timings):
+            reformatted = await reformat_resume(resume)
+
+        with timed_stage("render_pdf", timings):
+            pdf_bytes = render_resume_pdf(reformatted, use_technical_skills=use_technical_skills)
 
         return StreamingResponse(
             iter([pdf_bytes]),
             media_type="application/pdf",
             headers={
-                "Content-Disposition": 'attachment; filename="ats_resume.pdf"'
+                "Content-Disposition": 'attachment; filename="ats_resume.pdf"',
+                "X-Pipeline-Timings": json.dumps(timings),
             },
         )
     except AuthenticationError as e:
@@ -74,9 +95,14 @@ async def reformat_resume_from_pdf(
                    f"Error: {str(e)}\n"
                    f"Get your API key from: https://platform.openai.com/account/api-keys"
         )
-    except Exception as e:
+    except Exception:
+        logger.exception("reformat_resume_from_pdf failed")
         raise HTTPException(
             status_code=500,
-            detail=f"An error occurred while processing your request: {str(e)}"
+            detail="An internal error occurred while processing your request."
         )
-
+    finally:
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass

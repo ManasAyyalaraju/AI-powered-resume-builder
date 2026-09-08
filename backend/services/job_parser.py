@@ -1,8 +1,10 @@
-import json
+import hashlib
 import re
-from typing import List
+from typing import List, Optional, Tuple
+from pydantic import BaseModel
+from core.config import settings
 from models.job_models import JobDescription
-from services.llm_client import client
+from services.llm_client import client, _extract_parsed
 
 
 NON_SKILL_PATTERNS = [
@@ -43,71 +45,168 @@ def _filter_concrete_skills(skills: List[str]) -> List[str]:
     return filtered
 
 
-def parse_job_description_from_text(text: str) -> JobDescription:
+class _ParsedJobFields(BaseModel):
+    title: Optional[str] = None
+    company: Optional[str] = None
+    must_have_skills: List[str] = []
+    nice_to_have_skills: List[str] = []
+    responsibilities: List[str] = []
+    keywords: List[str] = []
+
+
+class _JDWithDomain(BaseModel):
+    job: _ParsedJobFields
+    industry: str
+    sub_domain: str
+    confidence: str
+
+
+# Ephemeral, in-process cache (no TTL, cleared on restart) so tailoring the
+# same JD against multiple resumes - or a retry - skips a full LLM round trip.
+# Keyed on a hash of the normalized JD text, not a title prefix (the previous
+# cache's actual bug: two different JDs sharing a title prefix would
+# incorrectly share a domain classification).
+_jd_cache: dict = {}
+
+
+def _cache_key(text: str) -> str:
+    normalized = " ".join(text.split()).strip().lower()
+    return hashlib.sha256(normalized.encode()).hexdigest()
+
+
+async def parse_job_description_from_text(text: str) -> Tuple[JobDescription, dict]:
     """
-    Use the LLM to convert raw JD text into a structured JobDescription object.
+    Use the LLM to convert raw JD text into a structured JobDescription,
+    plus classify its industry/sub-domain in the same call (previously a
+    separate round trip chained onto the tailoring call's critical path).
+
+    Returns (JobDescription, domain_info) where domain_info is
+    {"industry", "sub_domain", "confidence"}.
     """
+    key = _cache_key(text)
+    if key in _jd_cache:
+        return _jd_cache[key]
+
+    if not client:
+        raise RuntimeError("OpenAI client not configured - OPENAI_API_KEY is missing.")
 
     prompt = f"""
-You are a job description parser.
+You are a job description parser and classifier.
 
-Convert the following job description text into a JSON object with this structure:
-
-{{
-  "title": "string",            // job title
-  "company": "string",          // company name if present, else ""
-  "location": "string",         // location if present, else ""
-  "employment_type": "string",  // e.g. Internship, Full-time, etc. or ""
-  "raw_text": "string",         // full original JD text
-  "must_have_skills": ["string", "string", ...],  // required/critical skills (concrete tools, software, certifications, or methodologies only)
-  "nice_to_have_skills": ["string", "string", ...],  // preferred but not required skills (concrete only)
-  "keywords": ["string", "string", ...],  // important keywords for ATS matching
-  "responsibilities": ["string", "string", ...]  // key responsibilities (optional)
-}}
+TASK 1 - Extract structured fields from the job description text:
+- "title": job title
+- "company": company name if present
+- "must_have_skills": Concrete tools/software/platforms/certifications/methodologies explicitly stated as required
+- "nice_to_have_skills": Same kind of concrete skills that are preferred/bonus
+- "responsibilities": key responsibilities (optional)
+- "keywords": Important industry terms, methodologies, or concepts for ATS matching
 
 Rules:
-- Extract ONLY what appears in the text.
-- If a field is missing, use an empty string "" or empty list [].
-- "must_have_skills": Concrete tools/software/platforms/certifications/methodologies explicitly stated as required.
-- "nice_to_have_skills": Same kind of concrete skills that are preferred/bonus.
+- Extract ONLY what appears in the text. Omit a field (leave it empty) if it's missing.
 - Do NOT classify education requirements, years of experience, tenure, personality traits (self-starter, motivated, organized), or generic ability/communication/customer-service/vendor interaction statements as skills. Those may remain as keywords/responsibilities if present.
-- "keywords": Important industry terms, methodologies, or concepts for ATS matching.
 - Extract skills from ANY domain (tech, healthcare, finance, marketing, etc.) but keep them concrete.
-- Return ONLY valid JSON. Do NOT wrap it in markdown or backticks.
+
+TASK 2 - Classify the role's industry and sub-domain:
+
+INDUSTRIES:
+- Technology
+- Finance
+- Healthcare
+- Marketing
+- Education
+- Operations
+- Consulting
+- General / Hybrid
+
+TECHNOLOGY SUB-DOMAINS:
+- Software Engineering (SWE)
+- Data Analyst / Business Intelligence
+- Analytics Engineer / Data Engineering
+- Machine Learning / AI / Data Science
+- Cloud / DevOps
+- Frontend Development
+- Backend Development
+- Full-Stack Development
+- Mobile Development
+- QA / Testing
+
+FINANCE SUB-DOMAINS:
+- Commercial Banking
+- Investment Banking
+- Corporate Finance
+- Risk Management
+- Financial Analysis
+- Accounting
+- Wealth Management
+
+HEALTHCARE SUB-DOMAINS:
+- Clinical (Nursing, Physician, etc.)
+- Healthcare Administration
+- Medical Research
+- Public Health
+- Healthcare IT
+
+MARKETING SUB-DOMAINS:
+- Digital Marketing
+- Content Marketing
+- Brand Management
+- Marketing Analytics
+- Product Marketing
+
+EDUCATION SUB-DOMAINS:
+- Teaching (K-12, Higher Ed)
+- Educational Administration
+- Curriculum Development
+- Educational Technology
+
+OPERATIONS SUB-DOMAINS:
+- Operations Management
+- Supply Chain
+- Process Improvement
+- Quality Assurance
+
+CONSULTING SUB-DOMAINS:
+- Management Consulting
+- Technology Consulting
+- Financial Consulting
+
+GENERAL / HYBRID:
+- Project Management
+- Business Analysis
+- General Business
+
+Confidence levels for the classification:
+- "high": Clear indicators, specific role type
+- "medium": Some indicators, but could be multiple domains
+- "low": Unclear or very general role
 
 JOB DESCRIPTION TEXT:
 \"\"\"{text}\"\"\"
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
+    response = await client.chat.completions.parse(
+        model=settings.openai_model_fast,
         messages=[{"role": "user", "content": prompt}],
+        response_format=_JDWithDomain,
         temperature=0,
     )
+    parsed = _extract_parsed(response.choices[0].message)
 
-    raw = response.choices[0].message.content.strip()
+    job_fields = parsed.job.model_dump()
+    job_fields["must_have_skills"] = _filter_concrete_skills(job_fields.get("must_have_skills", []))
+    job_fields["nice_to_have_skills"] = _filter_concrete_skills(job_fields.get("nice_to_have_skills", []))
 
-    # --- Handle possible ```json ... ``` style wrapping ---
-    if raw.startswith("```"):
-        # remove leading/trailing code fences
-        # e.g. ```json\n{...}\n``` -> {...}
-        first_newline = raw.find("\n")
-        last_fence = raw.rfind("```")
-        if first_newline != -1 and last_fence != -1:
-            raw = raw[first_newline + 1:last_fence].strip()
+    # raw_text is populated from the input directly rather than asked of the
+    # model - there's no reason to spend output tokens/latency having it copy
+    # back text we already have.
+    jd_obj = JobDescription(raw_text=text, **job_fields)
 
-    # Parse JSON manually so we can see good errors if it fails
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError as e:
-        raise ValueError(
-            "JD parser: LLM did not return valid JSON. First 500 chars:\n"
-            + raw[:500]
-        ) from e
+    domain_info = {
+        "industry": parsed.industry or "General / Hybrid",
+        "sub_domain": parsed.sub_domain or "General Business",
+        "confidence": parsed.confidence or "medium",
+    }
 
-    parsed["must_have_skills"] = _filter_concrete_skills(parsed.get("must_have_skills", []))
-    parsed["nice_to_have_skills"] = _filter_concrete_skills(parsed.get("nice_to_have_skills", []))
-
-    # Validate against the JobDescription model
-    jd_obj = JobDescription.model_validate(parsed)
-    return jd_obj
+    result = (jd_obj, domain_info)
+    _jd_cache[key] = result
+    return result

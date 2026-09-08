@@ -1,53 +1,58 @@
 from models.resume_models import Resume, TechnicalSkillCategory
 from models.job_models import JobDescription
-from .llm_client import rewrite_resume_sections, categorize_skills
+from core.exceptions import TailoringGenerationError
+from services.bullet_verifier import verify_bullets, find_unauthorized_terms
+from .llm_client import rewrite_resume_sections, categorize_skills, revise_bullet
 import json
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 
 
 def estimate_resume_fullness(resume: Resume) -> int:
     """
     Estimate how full/dense the resume content is by counting various elements.
     Returns a score representing content density.
-    
+
     Higher scores indicate fuller resumes that may not have room for headline/summary.
     """
     score = 0
-    
+
     # Count experience entries and bullets (weighted heavily)
     if resume.experience:
         score += len(resume.experience) * 3  # Each experience entry counts as 3
         for exp in resume.experience:
             score += len(exp.bullets)  # Each bullet counts as 1
-    
+
     # Count project entries and bullets
     if resume.projects:
         score += len(resume.projects) * 2  # Each project counts as 2
         for proj in resume.projects:
             score += len(proj.bullets)
-    
+
     # Count leadership entries and bullets
     if resume.leadership:
         score += len(resume.leadership) * 2  # Each leadership entry counts as 2
         for lead in resume.leadership:
             score += len(lead.bullets)
-    
+
     # Count education entries
     if resume.education:
         score += len(resume.education) * 2  # Each education entry counts as 2
-    
+
     # Count other sections (lighter weight)
     if resume.volunteer_work:
         score += len(resume.volunteer_work) * 2
         for vol in resume.volunteer_work:
             score += len(vol.bullets)
-    
+
     if resume.awards:
         score += len(resume.awards)
-    
+
     if resume.publications:
         score += len(resume.publications) * 2
-    
+
     # Skills section counts as 1
     if resume.skills:
         score += 1
@@ -66,15 +71,15 @@ def conditionally_remove_headline_summary(resume: Resume) -> Resume:
     """
     Remove headline and summary sections if the resume is too full to fit on one page.
     ADD headline and summary if the resume is sparse and needs more content.
-    
+
     Threshold guideline:
     - Score < 35: Resume is sparse, KEEP or ADD headline/summary to fill space
     - Score >= 35: Resume is full, REMOVE headline/summary to save space
     """
     FULLNESS_THRESHOLD = 35  # Raised from 30
-    
+
     fullness_score = estimate_resume_fullness(resume)
-    
+
     # Additional checks for sparseness
     has_work_experience = len(resume.experience) > 0
     total_bullets = (
@@ -83,7 +88,7 @@ def conditionally_remove_headline_summary(resume: Resume) -> Resume:
         sum(len(lead.bullets) for lead in resume.leadership) +
         sum(len(vol.bullets) for vol in resume.volunteer_work)
     )
-    
+
     # Resume is SPARSE if:
     # - No work experience, OR
     # - Few bullets (< 15), OR
@@ -93,7 +98,7 @@ def conditionally_remove_headline_summary(resume: Resume) -> Resume:
         total_bullets < 15 or
         fullness_score < FULLNESS_THRESHOLD
     )
-    
+
     if is_sparse:
         # Resume is sparse - KEEP headline/summary to fill space
         # Don't remove even if they exist
@@ -102,7 +107,7 @@ def conditionally_remove_headline_summary(resume: Resume) -> Resume:
         # Resume is full - REMOVE headline/summary to save space
         resume.headline = None
         resume.summary = None
-    
+
     return resume
 
 
@@ -125,7 +130,7 @@ def format_skill(skill: str) -> str:
                 if char.isalpha():
                     return word[:i] + char.upper() + word[i+1:].lower()
             return word
-        
+
         # Split into words (preserving spaces)
         words = skill.split()
         formatted_words = [capitalize_word(word) for word in words]
@@ -140,7 +145,7 @@ def format_skills_list(skills: list[str]) -> list[str]:
     return [format_skill(skill) for skill in skills]
 
 
-def ensure_technical_skills(resume: Resume) -> Resume:
+async def ensure_technical_skills(resume: Resume) -> Resume:
     """
     Populate resume.technical_skills from the flat resume.skills list when
     the source resume didn't already present skills in a categorized format.
@@ -152,7 +157,7 @@ def ensure_technical_skills(resume: Resume) -> Resume:
     if resume.technical_skills or not resume.skills:
         return resume
 
-    categories = categorize_skills(resume.skills)
+    categories = await categorize_skills(resume.skills)
     if categories:
         resume.technical_skills = [TechnicalSkillCategory(**c) for c in categories]
 
@@ -170,7 +175,53 @@ def reorder_skills(resume: Resume, jd: JobDescription) -> Resume:
     return resume
 
 
-def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
+async def _verify_and_correct_section(
+    original_entries: list,
+    rewritten_entries: list,
+    jd_skills: list[str],
+    resume_skills: list[str],
+    resume_technical_skills: list[str],
+    jd_json: dict,
+) -> None:
+    """
+    For each entry in a section (experience/projects/leadership), check its
+    tailored bullets against bullet_verifier and correct or revert any that
+    introduce a JD skill the candidate doesn't actually have. Mutates
+    `rewritten_entries` in place.
+    """
+    for original, rewritten in zip(original_entries, rewritten_entries):
+        violations = verify_bullets(
+            original.bullets, rewritten.bullets, jd_skills, resume_skills, resume_technical_skills
+        )
+        if not violations:
+            continue
+
+        for idx, unauthorized_terms in violations.items():
+            original_bullet = original.bullets[idx]
+            tailored_bullet = rewritten.bullets[idx]
+
+            revised = await revise_bullet(original_bullet, tailored_bullet, unauthorized_terms, jd_json)
+            still_flagged = find_unauthorized_terms(
+                original_bullet, revised, jd_skills, resume_skills, resume_technical_skills
+            )
+
+            # Bounded to exactly one re-ask - if it's still not clean, fall
+            # back to the original bullet text (guaranteed truthful) rather
+            # than risk another round or fragile string surgery.
+            if still_flagged:
+                logger.warning(
+                    "bullet_verifier: re-ask did not clear violation, reverting to original bullet "
+                    "(terms=%s, still_flagged=%s)", unauthorized_terms, still_flagged
+                )
+                rewritten.bullets[idx] = original_bullet
+            else:
+                logger.info(
+                    "bullet_verifier: corrected tailored bullet (terms=%s)", unauthorized_terms
+                )
+                rewritten.bullets[idx] = revised
+
+
+async def tailor_resume(resume: Resume, jd: JobDescription, domain_info: dict) -> Resume:
     """
     Tailor resume to the job description:
     1. Reorder skills to prioritize JD-relevant ones.
@@ -178,11 +229,14 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
     3. Enforce:
        - company, title, dates, location stay EXACTLY the same
        - number of bullets per experience/project/leadership stays the same
-    4. Set compact_mode based on resume fullness
+    4. Verify tailored bullets don't introduce a JD skill the candidate
+       doesn't actually have; correct (bounded to one retry) or revert any
+       that do.
+    5. Set compact_mode based on resume fullness
     """
     # Calculate resume fullness to determine compact mode
     fullness_score = estimate_resume_fullness(resume)
-    
+
     # Count total bullets for density analysis
     total_bullets = 0
     for exp in resume.experience:
@@ -193,7 +247,7 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
         total_bullets += len(lead.bullets)
     for vol in resume.volunteer_work:
         total_bullets += len(vol.bullets)
-    
+
     # Count sections
     num_sections = sum([
         1 if resume.experience else 0,
@@ -204,7 +258,7 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
         1 if resume.awards else 0,
         1 if resume.publications else 0
     ])
-    
+
     # Calculate average bullet length
     all_bullets = []
     for exp in resume.experience:
@@ -215,14 +269,14 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
         all_bullets.extend(lead.bullets)
     for vol in resume.volunteer_work:
         all_bullets.extend(vol.bullets)
-    
+
     avg_bullet_length = sum(len(b) for b in all_bullets) / len(all_bullets) if all_bullets else 150
-    
+
     # Check critical indicators
     has_work_experience = len(resume.experience) > 0
     has_headline = resume.headline not in [None, ""]
     has_summary = resume.summary not in [None, ""]
-    
+
     # Set compact mode for SPACING using RELAXED criteria
     # Use minimal spacing if resume has substantial content, regardless of bullet length
     # This ensures "Full but Verbose" resumes (like Aswath) get minimal spacing
@@ -233,7 +287,7 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
         # NOTE: Don't check avg_bullet_length here - that's for LLM only
         # Even if bullets are long/verbose, use minimal spacing to save space
     )
-    
+
     # Keep original experience, project, and leadership structures for safety
     original_experience = [exp.model_copy(deep=True) for exp in resume.experience]
     original_projects = [proj.model_copy(deep=True) for proj in resume.projects]
@@ -247,15 +301,12 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
     resume_json = json.loads(resume.model_dump_json())
     jd_json = json.loads(jd.model_dump_json())
 
-    rewritten_json_str = rewrite_resume_sections(resume_json, jd_json)
-
     try:
-        rewritten_data = json.loads(rewritten_json_str)
-    except json.JSONDecodeError:
-        # Fallback to rule-based resume if model breaks JSON
-        return resume
-
-    rewritten_resume = Resume.model_validate(rewritten_data)
+        rewritten_resume = await rewrite_resume_sections(resume_json, jd_json, domain_info)
+    except Exception as e:
+        # Never silently fall back to the untailored resume - the caller
+        # needs a clear, catchable signal that tailoring failed.
+        raise TailoringGenerationError(f"Resume tailoring failed: {e}") from e
 
     # Preserve compact_mode setting
     rewritten_resume.compact_mode = resume.compact_mode
@@ -329,10 +380,27 @@ def tailor_resume(resume: Resume, jd: JobDescription) -> Resume:
 
     rewritten_resume.leadership = locked_leadership
 
-    # Step 4: Format skills (tools stay as is, concept phrases get title case)
+    # Step 4: Verify tailored bullets stay truthful - flag any JD skill that
+    # shows up in a tailored bullet but wasn't in the original bullet nor
+    # anywhere in the candidate's own skill lists, and correct/revert it.
+    jd_skills = (jd.must_have_skills or []) + (jd.nice_to_have_skills or [])
+    resume_skill_pool = rewritten_resume.skills or []
+    resume_technical_pool = [item for cat in rewritten_resume.technical_skills for item in cat.items]
+
+    await _verify_and_correct_section(
+        original_experience, rewritten_resume.experience, jd_skills, resume_skill_pool, resume_technical_pool, jd_json
+    )
+    await _verify_and_correct_section(
+        original_projects, rewritten_resume.projects, jd_skills, resume_skill_pool, resume_technical_pool, jd_json
+    )
+    await _verify_and_correct_section(
+        original_leadership, rewritten_resume.leadership, jd_skills, resume_skill_pool, resume_technical_pool, jd_json
+    )
+
+    # Step 5: Format skills (tools stay as is, concept phrases get title case)
     rewritten_resume.skills = format_skills_list(rewritten_resume.skills)
 
-    # Step 5: Conditionally remove headline/summary if resume is too full
+    # Step 6: Conditionally remove headline/summary if resume is too full
     rewritten_resume = conditionally_remove_headline_summary(rewritten_resume)
 
     return rewritten_resume

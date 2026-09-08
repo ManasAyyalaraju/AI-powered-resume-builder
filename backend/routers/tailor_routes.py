@@ -1,14 +1,25 @@
+import asyncio
+import json
+import logging
+import os
+import re
+import tempfile
+from typing import List, Dict, Any
+
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse, StreamingResponse
+from openai import AuthenticationError
+
+from core.config import settings
+from core.exceptions import TailoringGenerationError
+from core.timing import timed_stage
 from services.pdf_resume_parser import parse_pdf_resume_to_json
 from services.job_parser import parse_job_description_from_text
 from services.tailor_engine import tailor_resume, ensure_technical_skills
-from services.keyword_extractor import extract_skills_and_keywords
 from services.pdf_writer import render_resume_pdf
-from fastapi.responses import StreamingResponse
-from openai import AuthenticationError
-from core.config import settings
-import re
-from typing import List, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Tailoring"])
 
@@ -114,7 +125,7 @@ async def tailor_resume_from_pdf(
     Returns:
     - Tailored resume JSON
     """
-    
+
     # Validate API key before processing
     try:
         settings.validate_api_key()
@@ -124,14 +135,24 @@ async def tailor_resume_from_pdf(
             detail=str(e)
         )
 
-    # Save PDF to /tmp
-    temp_path = f"/tmp/{pdf.filename}"
-    with open(temp_path, "wb") as f:
+    # Unique per-request temp filename - reusing pdf.filename directly let
+    # two concurrent requests uploading a common name (e.g. "resume.pdf")
+    # collide on the same path.
+    suffix = os.path.splitext(pdf.filename or "")[1] or ".pdf"
+    fd, temp_path = tempfile.mkstemp(suffix=suffix)
+    with os.fdopen(fd, "wb") as f:
         f.write(await pdf.read())
 
+    timings: Dict[str, int] = {}
+
     try:
-        # 1) PDF -> Resume Object
-        resume = parse_pdf_resume_to_json(temp_path)
+        # 1) PDF -> Resume Object, JD text -> JobDescription (independent of
+        # each other, so run them concurrently instead of sequentially)
+        with timed_stage("parse_resume_and_jd", timings):
+            resume, (jd, domain_info) = await asyncio.gather(
+                parse_pdf_resume_to_json(temp_path),
+                parse_job_description_from_text(jd_text),
+            )
 
         # Parse any dedicated skills line and MERGE with extracted skills (do not overwrite).
         line_skills: List[str] = []
@@ -151,46 +172,40 @@ async def tailor_resume_from_pdf(
         # once the extra section shows up at render time.
         use_technical_skills = resume_format.lower() == "technical" and output.lower() == "pdf"
         if use_technical_skills:
-            resume = ensure_technical_skills(resume)
-
-        # 2) JD text -> JobDescription
-        jd = parse_job_description_from_text(jd_text)
-
-        # 2b) Extract skills from JD and add to resume if they appear in the resume text
-        # This helps identify skills that were mentioned in experience but not explicitly listed.
-        # We only add skills that are both in the JD requirements AND can be found in the resume content.
-        if not resume.skills or len(resume.skills) == 0:
-            # If no skills were extracted, try to extract from the full resume text
-            # This is a fallback - ideally skills should be extracted during PDF parsing
-            pass
-        
-        # Note: We no longer automatically add JD skills to the resume.
-        # Skills should be extracted from the resume itself during parsing.
-        # The JD skills are used for tailoring/emphasis, not for adding new skills.
+            with timed_stage("categorize_skills", timings):
+                resume = await ensure_technical_skills(resume)
 
         # 3) Tailor
-        tailored_resume = tailor_resume(resume, jd)
+        with timed_stage("tailor", timings):
+            tailored_resume = await tailor_resume(resume, jd, domain_info)
 
         # 3b) Compatibility report
         jd_data = jd.model_dump()
         compatibility = _compute_compatibility(tailored_resume.skills or [], jd_data)
 
+        timings_header = json.dumps(timings)
+
         # 4) Output mode
         if output.lower() == "pdf":
-            pdf_bytes = render_resume_pdf(tailored_resume, use_technical_skills=use_technical_skills)
+            with timed_stage("render_pdf", timings):
+                pdf_bytes = render_resume_pdf(tailored_resume, use_technical_skills=use_technical_skills)
             return StreamingResponse(
                 iter([pdf_bytes]),
                 media_type="application/pdf",
                 headers={
-                    "Content-Disposition": 'attachment; filename="tailored_resume.pdf"'
+                    "Content-Disposition": 'attachment; filename="tailored_resume.pdf"',
+                    "X-Pipeline-Timings": json.dumps(timings),
                 },
             )
 
-        return {
-            "resume": tailored_resume,
-            "job_description": jd,
-            "compatibility": compatibility,
-        }
+        return JSONResponse(
+            content=jsonable_encoder({
+                "resume": tailored_resume,
+                "job_description": jd,
+                "compatibility": compatibility,
+            }),
+            headers={"X-Pipeline-Timings": timings_header},
+        )
     except AuthenticationError as e:
         raise HTTPException(
             status_code=401,
@@ -198,8 +213,20 @@ async def tailor_resume_from_pdf(
                    f"Error: {str(e)}\n"
                    f"Get your API key from: https://platform.openai.com/account/api-keys"
         )
-    except Exception as e:
+    except TailoringGenerationError:
+        logger.exception("Resume tailoring failed")
+        raise HTTPException(
+            status_code=502,
+            detail="Resume tailoring failed. Please try again."
+        )
+    except Exception:
+        logger.exception("tailor_resume_from_pdf failed")
         raise HTTPException(
             status_code=500,
-            detail=f"An error occurred while processing your request: {str(e)}"
+            detail="An internal error occurred while processing your request."
         )
+    finally:
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass

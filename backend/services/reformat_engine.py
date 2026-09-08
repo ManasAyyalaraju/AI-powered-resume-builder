@@ -112,7 +112,7 @@ def _trim_resume_strings(resume: Resume) -> Resume:
     return resume
 
 
-def _generate_headline_summary_if_missing(resume: Resume) -> Resume:
+async def _generate_headline_summary_if_missing(resume: Resume) -> Resume:
     """Use LLM only to fill headline/summary when absent and space allows."""
     needs_headline = not resume.headline
     needs_summary = not resume.summary
@@ -121,7 +121,7 @@ def _generate_headline_summary_if_missing(resume: Resume) -> Resume:
         return resume
 
     resume_json = json.loads(resume.model_dump_json())
-    generated = generate_headline_summary(resume_json)
+    generated = await generate_headline_summary(resume_json)
 
     if needs_headline and generated.get("headline"):
         resume.headline = generated["headline"]
@@ -132,7 +132,7 @@ def _generate_headline_summary_if_missing(resume: Resume) -> Resume:
     return resume
 
 
-def reformat_resume(resume: Resume) -> Resume:
+async def reformat_resume(resume: Resume) -> Resume:
     """
     Deterministic reformatting:
     - Normalize spacing/strings
@@ -146,7 +146,7 @@ def reformat_resume(resume: Resume) -> Resume:
     if resume.compact_mode:
         resume = conditionally_remove_headline_summary(resume)
     else:
-        resume = _generate_headline_summary_if_missing(resume)
+        resume = await _generate_headline_summary_if_missing(resume)
 
     # Format skills (tools stay as-is, concept phrases title-cased)
     resume.skills = format_skills_list(resume.skills)

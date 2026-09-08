@@ -307,13 +307,41 @@ DOMAIN_PROMPTS = {
 def get_domain_prompt(industry: str, sub_domain: str) -> dict:
     """
     Get domain-specific prompt configuration.
-    
+
     Args:
         industry: Detected industry (e.g., "Technology")
         sub_domain: Detected sub-domain (e.g., "Data Analyst")
-    
+
     Returns:
         Domain-specific prompt config, or None if not found
     """
     return DOMAIN_PROMPTS.get(industry, {}).get(sub_domain, None)
+
+
+def format_domain_guidance(entry: dict) -> str:
+    """
+    Condense a domain_prompts entry into one short, fixed-size briefing line
+    instead of dumping its full emphasis/language_patterns/metrics/
+    skill_priorities/terminology lists into the tailoring prompt.
+
+    That full-dump approach was tried before and reverted: it added a few
+    hundred tokens on top of an already-dense prompt and gave the model more
+    instructions to juggle alongside the compression/expansion rules, which
+    measurably slowed generation. This keeps the injected guidance to a
+    handful of terms (~40-60 tokens) regardless of how much data a given
+    domain entry has, so it can't reproduce that regression.
+    """
+    top_emphasis = entry.get("emphasis", [])[:2]
+    top_terms = entry.get("terminology", [])[:5]
+    top_skills = entry.get("skill_priorities", {}).get("high", [])[:4]
+
+    parts = []
+    if top_emphasis:
+        parts.append(f"Emphasize: {', '.join(top_emphasis)}.")
+    if top_terms:
+        parts.append(f"Use terminology like: {', '.join(top_terms)}.")
+    if top_skills:
+        parts.append(f"Prioritize these skills if present: {', '.join(top_skills)}.")
+
+    return " ".join(parts)
 

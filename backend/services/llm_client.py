@@ -1,8 +1,10 @@
 import json
-from openai import OpenAI
+from typing import List, Optional
+from openai import AsyncOpenAI
+from pydantic import BaseModel
 from core.config import settings
-from services.domain_detector import detect_domain
-from services.domain_prompts import get_domain_prompt
+from models.resume_models import Resume, TechnicalSkillCategory
+from services.domain_prompts import get_domain_prompt, format_domain_guidance
 
 # Validate API key on import
 try:
@@ -11,13 +13,24 @@ except ValueError as e:
     import warnings
     warnings.warn(str(e), UserWarning)
 
-client = OpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
+client = (
+    AsyncOpenAI(api_key=settings.openai_api_key, max_retries=settings.openai_max_retries)
+    if settings.openai_api_key
+    else None
+)
 
-# Simple in-memory cache for domain detection (to avoid duplicate API calls)
-_domain_cache = {}
+
+def _extract_parsed(message):
+    """Pull the validated structured-output object off a chat completion message,
+    raising clearly instead of letting a None/refusal propagate silently."""
+    if message.refusal:
+        raise RuntimeError(f"Model refused the request: {message.refusal}")
+    if message.parsed is None:
+        raise RuntimeError("Model returned no parsed structured output.")
+    return message.parsed
 
 
-def rewrite_resume_sections(resume_json: dict, job_json: dict) -> str:
+async def rewrite_resume_sections(resume_json: dict, job_json: dict, domain_info: dict) -> Resume:
     """
     Call the LLM to strongly tailor the resume to any job description:
     - Rewrite summary (if present)
@@ -25,14 +38,20 @@ def rewrite_resume_sections(resume_json: dict, job_json: dict) -> str:
     - Keep the SAME number of bullets per entry
     - Match original bullet lengths character-for-character
     - Adapt to any domain (tech, healthcare, finance, marketing, etc.)
+
+    `domain_info` ({"industry", "sub_domain", "confidence"}) is produced once
+    by job_parser.parse_job_description_from_text (merged into the JD-parsing
+    call) rather than detected again here.
     """
+    if not client:
+        raise RuntimeError("OpenAI client not configured - OPENAI_API_KEY is missing.")
 
     # Calculate original resume structure and bullet lengths
     experience_bullet_counts = [len(exp.get("bullets", [])) for exp in resume_json.get("experience", [])]
     project_bullet_counts = [len(proj.get("bullets", [])) for proj in resume_json.get("projects", [])]
     leadership_bullet_counts = [len(lead.get("bullets", [])) for lead in resume_json.get("leadership", [])]
     volunteer_bullet_counts = [len(vol.get("bullets", [])) for vol in resume_json.get("volunteer_work", [])]
-    
+
     # Get all bullets with their lengths for the prompt
     bullet_examples = []
     for exp in resume_json.get("experience", []):
@@ -44,10 +63,10 @@ def rewrite_resume_sections(resume_json: dict, job_json: dict) -> str:
     for lead in resume_json.get("leadership", []):
         for bullet in lead.get("bullets", []):
             bullet_examples.append(f"Original ({len(bullet)} chars): \"{bullet}\"")
-    
+
     # Show first 5 as examples
     bullet_examples_str = "\n".join(bullet_examples[:5])
-    
+
     # Calculate bullet lengths
     all_bullets = []
     for exp in resume_json.get("experience", []):
@@ -56,29 +75,31 @@ def rewrite_resume_sections(resume_json: dict, job_json: dict) -> str:
         all_bullets.extend(proj.get("bullets", []))
     for lead in resume_json.get("leadership", []):
         all_bullets.extend(lead.get("bullets", []))
-    
+
     bullet_lengths = [len(bullet) for bullet in all_bullets if bullet]
     avg_bullet_length = sum(bullet_lengths) / len(bullet_lengths) if bullet_lengths else 150
-    
+
     total_bullets = sum(experience_bullet_counts + project_bullet_counts + leadership_bullet_counts + volunteer_bullet_counts)
-    
+
     # Use compact_mode from the resume object (already calculated in tailor_engine.py)
     # This determines whether we need tight spacing AND short bullets
     is_compact = resume_json.get("compact_mode", False)
-    
-    # Stage 1: Detect domain (with caching to avoid duplicate calls)
-    jd_title = job_json.get("title", "")
-    cache_key = jd_title.lower()[:50]
-    
-    if cache_key in _domain_cache:
-        domain_info = _domain_cache[cache_key]
-    else:
-        domain_info = detect_domain(job_json)
-        _domain_cache[cache_key] = domain_info
-    
+
     industry = domain_info.get("industry", "General / Hybrid")
     sub_domain = domain_info.get("sub_domain", "General Business")
-    
+
+    # Prefer a condensed, fixed-size briefing built from domain_prompts.py when
+    # this (industry, sub_domain) pair has an entry; otherwise fall back to the
+    # plain label (coverage is partial - e.g. Consulting has no entries at all).
+    # Deliberately NOT dumping the full emphasis/language_patterns/metrics/
+    # skill_priorities/terminology lists here - that was tried before and
+    # reverted because the larger prompt measurably slowed generation.
+    domain_entry = get_domain_prompt(industry, sub_domain)
+    if domain_entry:
+        domain_guidance_line = f"INDUSTRY: {industry} > {sub_domain}. {format_domain_guidance(domain_entry)}"
+    else:
+        domain_guidance_line = f"INDUSTRY: {industry} > {sub_domain}"
+
     # Build a simple focus string from JD skills
     must = job_json.get("must_have_skills", []) or []
     nice = job_json.get("nice_to_have_skills", []) or []
@@ -90,17 +111,14 @@ def rewrite_resume_sections(resume_json: dict, job_json: dict) -> str:
         # Don't compress too aggressively - respect user's original content
         if avg_bullet_length >= 200:
             target_range = "170-190 characters"
-            target_desc = "moderately compressed"
             compression_note = "Original bullets are very long (200+ chars). Compress them to ~180 chars to save space while preserving key details."
         elif avg_bullet_length >= 170:
             target_range = "150-170 characters"
-            target_desc = "slightly compressed"
             compression_note = "Original bullets are moderately long (170-200 chars). Compress them to ~160 chars to fit better on one page."
         else:
             target_range = "130-160 characters"
-            target_desc = "kept concise"
             compression_note = "Original bullets are already concise. Keep them short at 130-160 chars."
-        
+
         primary_rule = f"""
 =========================================
 ⚠️ PRIMARY RULE: COMPRESS BULLETS FOR ONE-PAGE FIT ⚠️
@@ -191,7 +209,7 @@ JOB DESCRIPTION FOCUS
 =========================================
 
 TITLE: {job_json.get("title", "N/A")}
-INDUSTRY: {industry} > {sub_domain}
+{domain_guidance_line}
 KEY SKILLS: {focus_skills if focus_skills else "General"}
 
 =========================================
@@ -223,10 +241,8 @@ Original (95 chars): "Supported technical sales cycles across 10+ national accou
 {example2}
 
 =========================================
-OUTPUT FORMAT
+RESUME AND JOB DATA
 =========================================
-
-Return ONLY valid JSON with the rewritten resume. No commentary, no markdown, no explanation.
 
 RESUME JSON:
 {json.dumps(resume_json, indent=2)}
@@ -236,21 +252,26 @@ JOB DESCRIPTION JSON:
 """
 
     system_message = f"You are a resume editor specializing in {industry}. Your PRIMARY goal: tailor content while matching original bullet lengths character-for-character."
-    
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
+
+    response = await client.chat.completions.parse(
+        model=settings.openai_model_generate,
         messages=[
             {"role": "system", "content": system_message},
             {"role": "user", "content": prompt},
         ],
+        response_format=Resume,
         temperature=0.3,  # Lower temperature for more consistent length matching
     )
 
-    content = response.choices[0].message.content
-    return content
+    return _extract_parsed(response.choices[0].message)
 
 
-def generate_headline_summary(resume_json: dict) -> dict:
+class _HeadlineSummary(BaseModel):
+    headline: Optional[str] = None
+    summary: Optional[str] = None
+
+
+async def generate_headline_summary(resume_json: dict) -> dict:
     """
     Generate ONLY a headline and summary from existing resume content.
     - No JD context
@@ -271,7 +292,6 @@ Resume JSON (truth source):
 {json.dumps(resume_json, indent=2)}
 
 Instructions:
-- Only output JSON with keys: headline, summary
 - Use ONLY information present above (roles, education, skills, bullets)
 - No new achievements or skills; do not change wording of bullets
 - Keep headline 50-80 characters; summary 2-3 sentences, ~120-220 chars total
@@ -279,28 +299,93 @@ Instructions:
 """
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
+        response = await client.chat.completions.parse(
+            model=settings.openai_model_fast,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt},
             ],
+            response_format=_HeadlineSummary,
             temperature=0.3,
         )
-        content = response.choices[0].message.content
-        data = json.loads(content)
+        parsed = _extract_parsed(response.choices[0].message)
         return {
-            "headline": data.get("headline") or None,
-            "summary": data.get("summary") or None,
+            "headline": parsed.headline or None,
+            "summary": parsed.summary or None,
         }
     except Exception:
         return {"headline": None, "summary": None}
 
 
+class _RevisedBullet(BaseModel):
+    bullet: str
+
+
+async def revise_bullet(
+    original_bullet: str,
+    tailored_bullet: str,
+    unauthorized_terms: List[str],
+    jd_json: dict,
+) -> str:
+    """
+    Bounded, single-shot correction: rewrite ONE bullet to remove skills/tools
+    flagged by bullet_verifier as unverified, without reintroducing them.
+
+    No internal retry loop - the caller (tailor_engine.tailor_resume) owns the
+    retry-once-then-fall-back-to-original semantics. On any failure here, the
+    original tailored bullet is returned unchanged so the caller's own
+    re-check still catches the violation and can fall back safely.
+    """
+    if not client:
+        return tailored_bullet
+
+    terms_str = ", ".join(unauthorized_terms)
+    system_message = (
+        "You are a resume editor. Rewrite exactly one bullet point to remove "
+        "unverified claims while keeping it accurate, well-written, and close "
+        "to the original length."
+    )
+    prompt = f"""
+This tailored bullet mentions skills/tools the candidate's resume does not actually list or use elsewhere: {terms_str}
+
+ORIGINAL BULLET (source of truth): "{original_bullet}"
+TAILORED BULLET (needs correction): "{tailored_bullet}"
+
+JOB TITLE: {jd_json.get("title", "N/A")}
+
+Rewrite the bullet to:
+- Remove all mention of: {terms_str}
+- NOT introduce any other skill/tool not already present in the original bullet
+- Keep the same general length and structure as the tailored bullet
+- Stay truthful to the original bullet's content
+
+Return the corrected bullet text.
+"""
+
+    try:
+        response = await client.chat.completions.parse(
+            model=settings.openai_model_fast,
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": prompt},
+            ],
+            response_format=_RevisedBullet,
+            temperature=0.2,
+        )
+        parsed = _extract_parsed(response.choices[0].message)
+        return parsed.bullet.strip() or tailored_bullet
+    except Exception:
+        return tailored_bullet
+
+
 MAX_SKILL_CATEGORIES = 3  # hard cap, enforced below - on top of this, Certifications gets its own category
 
 
-def categorize_skills(skills: list[str]) -> list[dict]:
+class _SkillCategories(BaseModel):
+    categories: List[TechnicalSkillCategory]
+
+
+async def categorize_skills(skills: list[str]) -> list[dict]:
     """
     Bucket a flat list of skills into at most MAX_SKILL_CATEGORIES broad,
     resume-specific categories (plus a separate Certifications category when
@@ -350,7 +435,6 @@ Skills:
 {json.dumps(skills, indent=2)}
 
 Instructions:
-- Only output JSON with this shape: {{"categories": [{{"label": "...", "items": ["...", ...]}}]}}
 - At most {MAX_SKILL_CATEGORIES} categories for actual skills - prefer fewer, wider categories over many narrow ones
 - Keep each label short - one concise term or short phrase, not a combined "X & Y" label
 - Every skill from the input must appear in exactly one category, unchanged
@@ -358,17 +442,17 @@ Instructions:
 """
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
+        response = await client.chat.completions.parse(
+            model=settings.openai_model_fast,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt},
             ],
+            response_format=_SkillCategories,
             temperature=0.2,
-            response_format={"type": "json_object"},
         )
-        data = json.loads(response.choices[0].message.content)
-        categories = data.get("categories", [])
+        parsed = _extract_parsed(response.choices[0].message)
+        categories = [c.model_dump() for c in parsed.categories]
         categories = [c for c in categories if c.get("label") and c.get("items")]
         categories = _enforce_skill_category_cap(categories)
         return _restore_dropped_skills(categories, skills)

@@ -4,6 +4,18 @@ from typing import Optional
 class Settings(BaseSettings):
     openai_api_key: Optional[str] = None  # we'll use this later
 
+    # Model tiering: cheap/fast model for parsing, classification, categorization,
+    # and the bounded verifier re-ask; a separate (currently identical) model for
+    # the actual bullet-generation call, which is the one output candidates are
+    # judged on. Raise openai_model_generate independently once a stronger tier
+    # is chosen - kept configurable rather than hardcoded so no model ID is guessed.
+    openai_model_fast: str = "gpt-4o-mini"
+    openai_model_generate: str = "gpt-4o-mini"
+
+    # Passed straight to AsyncOpenAI's built-in retry/backoff for transient
+    # errors (rate limits, timeouts) - no separate retry library needed.
+    openai_max_retries: int = 2
+
     model_config = {
         "env_file": ".env"
     }
