@@ -74,6 +74,23 @@ def _cache_key(text: str) -> str:
     return hashlib.sha256(normalized.encode()).hexdigest()
 
 
+async def _call_and_parse(prompt: str) -> _JDWithDomain:
+    response = await client.chat.completions.parse(
+        model=settings.openai_model_fast,
+        messages=[{"role": "user", "content": prompt}],
+        response_format=_JDWithDomain,
+        temperature=0,
+    )
+    return _extract_parsed(response.choices[0].message)
+
+
+def _clean_job_fields(parsed: _JDWithDomain) -> dict:
+    job_fields = parsed.job.model_dump()
+    job_fields["must_have_skills"] = _filter_concrete_skills(job_fields.get("must_have_skills", []))
+    job_fields["nice_to_have_skills"] = _filter_concrete_skills(job_fields.get("nice_to_have_skills", []))
+    return job_fields
+
+
 async def parse_job_description_from_text(text: str) -> Tuple[JobDescription, dict]:
     """
     Use the LLM to convert raw JD text into a structured JobDescription,
@@ -187,17 +204,27 @@ JOB DESCRIPTION TEXT:
 \"\"\"{text}\"\"\"
 """
 
-    response = await client.chat.completions.parse(
-        model=settings.openai_model_fast,
-        messages=[{"role": "user", "content": prompt}],
-        response_format=_JDWithDomain,
-        temperature=0,
-    )
-    parsed = _extract_parsed(response.choices[0].message)
+    parsed = await _call_and_parse(prompt)
+    job_fields = _clean_job_fields(parsed)
 
-    job_fields = parsed.job.model_dump()
-    job_fields["must_have_skills"] = _filter_concrete_skills(job_fields.get("must_have_skills", []))
-    job_fields["nice_to_have_skills"] = _filter_concrete_skills(job_fields.get("nice_to_have_skills", []))
+    # temperature=0 reduces but doesn't eliminate run-to-run variance - on a
+    # JD long enough to obviously contain several concrete skills, a result
+    # with fewer than 2 total extracted is more likely an unlucky sample than
+    # a genuinely skill-less posting. One bounded retry, not cached unless it
+    # actually helps, keeps this from permanently caching a bad sample.
+    total_extracted = len(job_fields["must_have_skills"]) + len(job_fields["nice_to_have_skills"])
+    if total_extracted < 2 and len(text) > 200:
+        retry_prompt = prompt + (
+            "\n\nNOTE: A previous pass over this same text under-extracted skills. "
+            "Re-read carefully for any concrete tool, technology, or methodology named "
+            "anywhere in the text, including inside qualifying phrases - do not return "
+            "empty or near-empty skill lists for a substantive job description."
+        )
+        retry_parsed = await _call_and_parse(retry_prompt)
+        retry_fields = _clean_job_fields(retry_parsed)
+        retry_total = len(retry_fields["must_have_skills"]) + len(retry_fields["nice_to_have_skills"])
+        if retry_total > total_extracted:
+            parsed, job_fields = retry_parsed, retry_fields
 
     # raw_text is populated from the input directly rather than asked of the
     # model - there's no reason to spend output tokens/latency having it copy
