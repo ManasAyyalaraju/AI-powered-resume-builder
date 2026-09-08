@@ -17,6 +17,14 @@
     }
     return null;
   }
+  function parseLinkedInDocumentTitle() {
+    const parts = document.title.split("|").map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 3 && parts[parts.length - 1] === "LinkedIn") {
+      const title = parts[0].replace(/^\(\d+\)\s*/, "").trim();
+      return { title: title || null, company: parts[1] || null };
+    }
+    return { title: null, company: null };
+  }
   function extractLinkedIn() {
     const description = firstMatchText([
       // LinkedIn's newer "SDUI" (server-driven UI) markup tags this section
@@ -31,12 +39,16 @@
       "#job-details",
       ".jobs-description-content__text"
     ]);
-    const title = firstMatchText([
+    const fromTitle = parseLinkedInDocumentTitle();
+    const title = fromTitle.title ?? firstMatchText([
       ".job-details-jobs-unified-top-card__job-title",
       ".jobs-unified-top-card__job-title",
       "h1"
     ]);
-    const company = firstMatchText([
+    const company = fromTitle.company ?? firstMatchText([
+      // Semantic accessibility label, confirmed present on current LinkedIn
+      // markup: a wrapping element carries aria-label="Company, {name}."
+      '[aria-label^="Company,"]',
       ".job-details-jobs-unified-top-card__company-name",
       ".jobs-unified-top-card__company-name",
       ".jobs-unified-top-card__subtitle-primary-grouping a"
