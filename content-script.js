@@ -38,6 +38,13 @@
   }
   function extractLinkedIn() {
     const description = firstMatchText([
+      // LinkedIn's newer "SDUI" (server-driven UI) markup tags this section
+      // with a semantic data attribute rather than a class name - the class
+      // names below it are auto-generated per-deploy and go stale quickly
+      // (confirmed: all four previously matched nothing on current LinkedIn).
+      // Prefer the semantic attribute; keep the old selectors as fallbacks in
+      // case LinkedIn serves a different variant.
+      '[data-sdui-component*="aboutTheJob"]',
       ".jobs-description__content",
       ".jobs-box__html-content",
       "#job-details",
@@ -99,16 +106,23 @@
       description: best?.textContent?.trim() ?? ""
     };
   }
-  function extractJobContext(url = window.location.href) {
+  function extractJobContext(url = window.location.href, options = {}) {
+    const { allowGenericFallback = true } = options;
     const site = detectSite(url);
-    const context = site === "linkedin" ? extractLinkedIn() : site === "indeed" ? extractIndeed() : site === "glassdoor" ? extractGlassdoor() : site === "handshake" ? extractHandshake() : extractGeneric();
-    if (!context.description || context.description.length < 100) {
-      const fallback = extractGeneric();
-      if (fallback.description.length > context.description.length) {
-        return fallback;
-      }
+    if (site === "unknown") {
+      const generic = extractGeneric();
+      return generic.description ? generic : null;
     }
-    return context.description ? context : null;
+    const context = site === "linkedin" ? extractLinkedIn() : site === "indeed" ? extractIndeed() : site === "glassdoor" ? extractGlassdoor() : extractHandshake();
+    if (context.description && context.description.length >= 100) {
+      return context;
+    }
+    if (!allowGenericFallback) {
+      return null;
+    }
+    const fallback = extractGeneric();
+    const best = fallback.description.length > (context.description?.length ?? 0) ? fallback : context;
+    return best.description ? best : null;
   }
 
   // node_modules/@supabase/supabase-js/dist/tracingRegistry.mjs
@@ -20719,10 +20733,12 @@ ${suffix}`;
       return false;
     }
   }
+  var MAX_EXTRACTION_ATTEMPTS = 4;
   async function tryShowPrompt(attempt = 0) {
     if (dismissedForThisPage || hostEl) return;
-    const jobContext = extractJobContext();
-    if (!jobContext && attempt < 4) {
+    const isLastAttempt = attempt >= MAX_EXTRACTION_ATTEMPTS;
+    const jobContext = extractJobContext(window.location.href, { allowGenericFallback: isLastAttempt });
+    if (!jobContext && !isLastAttempt) {
       setTimeout(() => tryShowPrompt(attempt + 1), 1e3);
       return;
     }
