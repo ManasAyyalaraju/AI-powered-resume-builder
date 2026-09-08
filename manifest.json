@@ -40,7 +40,7 @@
   "externally_connectable": {
     "matches": [
       "http://localhost:3000/*",
-      "https://ai-powered-resume-builder-peach.vercel.app/*"
+      "https://www.refactrapp.com/*"
     ]
   },
   "permissions": ["storage", "downloads", "scripting", "activeTab"],
@@ -51,6 +51,6 @@
     "https://joinhandshake.com/*",
     "https://*.joinhandshake.com/*",
     "http://localhost:8000/*",
-    "https://*.onrender.com/*"
+    "https://api.refactrapp.com/*"
   ]
 }
