@@ -42,6 +42,10 @@ const steps = [
 ];
 
 export default function ExtensionPage() {
+  const scrollToInstallation = () => {
+    document.getElementById('installation')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -58,6 +62,7 @@ export default function ExtensionPage() {
             </p>
             <a
               href={EXTENSION_DOWNLOAD_URL}
+              onClick={scrollToInstallation}
               className="inline-flex items-center justify-center bg-[#187fe7] hover:bg-[#146bc7] text-white font-medium text-[16px] px-6 py-3.5 rounded-[14px] shadow-[0px_4px_2px_rgba(0,0,0,0.25)] transition-colors"
             >
               Download for Chrome
@@ -68,7 +73,7 @@ export default function ExtensionPage() {
           </div>
         </section>
 
-        <section className="py-16 px-6 md:px-10 bg-[#f7f7f7]">
+        <section id="installation" className="py-16 px-6 md:px-10 bg-[#f7f7f7]">
           <div className="container mx-auto max-w-3xl">
             <h2 className="font-semibold text-[28px] md:text-[36px] tracking-[-0.72px] text-black mb-10 text-center">
               Installation
