@@ -10,8 +10,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # Local development
         "https://ai-powered-resume-builder-egn6vytdc-manas-s-projects-97f76173.vercel.app",  # Vercel production
-        # Add your custom domain here when you set it up:
-        # "https://your-custom-domain.com",
+        "https://refactrapp.com",
+        "https://www.refactrapp.com",
     ],
     allow_origin_regex=r"(https://.*\.vercel\.app|chrome-extension://.*)",  # Vercel deployments + the refactr Chrome extension
     allow_credentials=True,
